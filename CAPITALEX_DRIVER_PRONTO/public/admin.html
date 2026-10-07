@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capitalex Driver — Painel de Controle Administrativo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2334d6ac'/%3E%3Ctext x='8' y='42' font-size='28' font-family='Arial' font-weight='bold' fill='%23081320'%3ECD%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #081320;
+      --card: #111d2d;
+      --border: #1f3550;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #34d6ac;
+      --primary-hover: #22c55e;
+      --blue: #38bdf8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 24px 16px; min-height: 100vh; }
+    .container { max-width: 960px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.4rem; display: flex; align-items: center; gap: 10px; color: #fff; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
+    .card-title { font-size: 1.1rem; margin-bottom: 8px; color: var(--blue); }
+    .card-desc { color: var(--muted); margin-bottom: 16px; font-size: 0.88rem; }
+    .form-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    input[type="email"], input[type="text"] { flex: 1; min-width: 250px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); background: #060e18; color: #fff; font-size: 0.95rem; }
+    input:focus { outline: none; border-color: var(--primary); }
+    button { cursor: pointer; padding: 11px 18px; border-radius: 8px; border: none; font-weight: 700; font-size: 0.9rem; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-30 { background: var(--primary); color: #081320; }
+    .btn-30:hover { opacity: 0.9; }
+    .btn-90 { background: var(--blue); color: #081320; }
+    .btn-90:hover { opacity: 0.9; }
+    .btn-block { background: #7f1d1d; color: #fca5a5; }
+    .btn-block:hover { background: var(--danger); color: #fff; }
+    .status-msg { margin-top: 14px; font-size: 0.92rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+    th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; display: inline-block; }
+    .badge-active { background: #064e3b; color: #34d399; }
+    .badge-expiring { background: #78350f; color: #fde047; }
+    .badge-expired { background: #7f1d1d; color: #fca5a5; }
+    .actions-cell { display: flex; gap: 6px; }
+    .actions-cell button { padding: 5px 9px; font-size: 0.78rem; border-radius: 6px; }
+    .search-box { margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>👑 Painel de Administração — Capitalex</h1>
+      <a href="/" style="color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 600;">← Voltar ao Aplicativo</a>
+    </header>
+
+    <!-- Liberação Rápida -->
+    <div class="card">
+      <h2 class="card-title">Liberar ou Renovar Assinatura</h2>
+      <p class="card-desc">Digite o e-mail do motorista que efetuou o pagamento via Pix e escolha o plano correspondente:</p>
+      <div class="form-group">
+        <input type="email" id="targetEmail" placeholder="email-do-motorista@exemplo.com" required>
+        <button class="btn-30" onclick="liberarAcesso(30)">+30 Dias (Mensal R$ 25,95)</button>
+        <button class="btn-90" onclick="liberarAcesso(90)">+90 Dias (Trimestral R$ 69,90)</button>
+        <button class="btn-block" onclick="bloquearAcesso()">Bloquear</button>
+      </div>
+      <div id="statusMsg" class="status-msg"></div>
+    </div>
+
+    <!-- Lista de Usuários -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h2 class="card-title" style="margin-bottom: 2px;">Motoristas Cadastrados</h2>
+          <p class="card-desc" style="margin-bottom: 0;">Lista em tempo real dos motoristas registrados no sistema.</p>
+        </div>
+        <button onclick="carregarUsuarios()" style="background: var(--border); color: #fff; padding: 7px 14px; font-size: 0.82rem;">🔄 Atualizar</button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="filtroEmail" placeholder="🔍 Filtrar motorista por e-mail..." oninput="filtrarTabela()" style="width: 100%;">
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>E-mail</th>
+              <th>Situação</th>
+              <th>Validade</th>
+              <th>Ações Rápidas</th>
+            </tr>
+          </thead>
+          <tbody id="usersList">
+            <tr><td colspan="4" style="text-align: center; color: var(--muted); padding: 20px;">Carregando motoristas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let todosUsuarios = [];
+
+    async function api(rota, metodo = 'GET', body = null) {
+      const res = await fetch('/api/' + rota, {
+        method: metodo,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : null
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Erro na requisição');
+      return data;
+    }
+
+    async function liberarAcesso(dias) {
+      const email = document.getElementById('targetEmail').value.trim();
+      const msg = document.getElementById('statusMsg');
+      if (!email) return alert('Por favor, digite o e-mail do motorista.');
+
+      msg.textContent = 'Liberando acesso...';
+      msg.style.color = 'var(--muted)';
+
+      try {
+        const res = await api('admin-activate', 'POST', { email, days: dias });
+        msg.textContent = '✅ ' + res.message;
+        msg.style.color = 'var(--primary)';
+        carregarUsuarios();
+      } catch (err) {
+        msg.textContent = '❌ ' + err.message;
+        msg.style.color = 'var(--danger)';
+      }
+    }
+
+    async function bloquearAcesso() {
+      const email = document.getElementById('targetEmail').value.trim();
+      if (!email) return alert('Digite o e-mail do motorista.');
+      if (!confirm(`Deseja realmente bloquear o acesso do motorista ${email}?`)) return;
+
+      try {
+        const res = await api('admin-block', 'POST', { email });
+        alert(res.message);
+        carregarUsuarios();
+      } catch (err) {
+        alert('Erro: ' + err.message);
+      }
+    }
+
+    async function carregarUsuarios() {
+      const tbody = document.getElementById('usersList');
+      try {
+        const res = await api('admin-users');
+        todosUsuarios = res.users || [];
+        renderizarTabela(todosUsuarios);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: var(--danger); text-align: center; padding: 20px;">${err.message} (Faça login como administrador para acessar).</td></tr>`;
+      }
+    }
+
+    function renderizarTabela(lista) {
+      const tbody = document.getElementById('usersList');
+      if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted); padding: 20px;">Nenhum motorista encontrado.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = lista.map(u => {
+        let badge = '<span class="badge badge-expired">Inativo / Vencido</span>';
+        let expira = '—';
+        if (u.is_active) {
+          badge = u.days_left <= 3
+            ? `<span class="badge badge-expiring">Vence em ${u.days_left}d</span>`
+            : `<span class="badge badge-active">Ativo (${u.days_left} dias)</span>`;
+          expira = new Date(u.expires_at).toLocaleDateString('pt-BR');
+        }
+        return `
+          <tr>
+            <td><strong>${u.email}</strong></td>
+            <td>${badge}</td>
+            <td>${expira}</td>
+            <td>
+              <div class="actions-cell">
+                <button onclick="selecionarLiberar('${u.email}', 30)" class="btn-30" title="Liberar +30 dias">+30d</button>
+                <button onclick="selecionarLiberar('${u.email}', 90)" class="btn-90" title="Liberar +90 dias">+90d</button>
+                <button onclick="selecionarBloquear('${u.email}')" class="btn-block" title="Bloquear">✕</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function selecionarLiberar(email, dias) {
+      document.getElementById('targetEmail').value = email;
+      liberarAcesso(dias);
+    }
+
+    function selecionarBloquear(email) {
+      document.getElementById('targetEmail').value = email;
+      bloquearAcesso();
+    }
+
+    function filtrarTabela() {
+      const termo = document.getElementById('filtroEmail').value.toLowerCase().trim();
+      const filtrados = todosUsuarios.filter(u => u.email.toLowerCase().includes(termo));
+      renderizarTabela(filtrados);
+    }
+
+    // Carrega a lista automaticamente
+    carregarUsuarios();
+  </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+=====================================================================
+CAPITALEX DRIVER — VERSÃO ASSINATURA MANUAL VIA PIX + PAINEL DE ADM
+=====================================================================
+
+Tudo foi configurado conforme solicitado pelo Flavio Rodrigues:
+- Pagamento manual via Pix (sem taxas nem exigências de conta Stripe).
+- Chave Pix: 11194608671 (CPF - Flavio Rodrigues).
+- Planos disponíveis para o motorista:
+    * Plano Mensal: R$ 25,95 (30 dias de acesso)
+    * Plano Trimestral com Desconto: R$ 69,90 (90 dias de acesso)
+- Botão direto de WhatsApp: (34) 99983-6438 para envio de comprovante.
+- Aviso Amigável: quando faltarem 3 dias ou menos para o vencimento, 
+  um aviso no topo do painel avisa o motorista com botão para renovar via Pix.
+- Painel de Administrador Exclusivo em /admin.html para o e-mail:
+  flaviofilhors15@gmail.com.
+
+---------------------------------------------------------------------
+1. O QUE VOCÊ PRECISA FAZER NO SUPABASE (BANCO DE DADOS):
+---------------------------------------------------------------------
+1. Entre no Supabase (https://supabase.com) e abra o seu projeto.
+2. Clique no menu esquerdo em "SQL Editor".
+3. Clique em "New query".
+4. Abra o arquivo database/setup.sql, copie todo o conteúdo e cole no Supabase.
+5. Clique no botão verde "Run" para executar.
+
+---------------------------------------------------------------------
+2. COMO PUBLICAR NA NETLIFY:
+---------------------------------------------------------------------
+1. Faça login na sua conta da Netlify (https://netlify.com).
+2. Conecte este projeto ou faça deploy dos arquivos.
+3. Nas configurações do site na Netlify (Site configuration -> Environment variables),
+   você só precisa de 5 variáveis agora:
+   - APP_URL (ex: https://seu-site.netlify.app)
+   - SUPABASE_URL (URL do seu projeto no Supabase)
+   - SUPABASE_ANON_KEY (Chave anon do Supabase)
+   - SUPABASE_SERVICE_ROLE_KEY (Chave service_role secreta do Supabase)
+   - RATE_LIMIT_SECRET (Qualquer texto secreto com mais de 16 letras)
+
+* OBSERVAÇÃO: Você NÃO precisa mais de STRIPE_SECRET_KEY nem STRIPE_PRICE_ID!
+
+---------------------------------------------------------------------
+3. COMO USAR O PAINEL DE ADMINISTRADOR NO DIA A DIA:
+---------------------------------------------------------------------
+1. Entre no seu site e faça login com seu e-mail: flaviofilhors15@gmail.com.
+2. Acesse: https://seu-site.netlify.app/admin.html
+3. Quando um motorista fizer o Pix e te mandar o e-mail no WhatsApp:
+   - Digite o e-mail dele no painel.
+   - Clique em [+30 Dias (Mensal)] ou [+90 Dias (Trimestral)].
+   - O acesso dele é liberado instantaneamente!
+4. Se o motorista não pagar a renovação após os 30 ou 90 dias, o próprio
+   sistema bloqueia a conta dele automaticamente.
+=====================================================================
