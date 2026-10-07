@@ -20,7 +20,11 @@ export default async function handler(req, context = {}) {
     const action = new URL(req.url).pathname.split('/').pop();
 
     if (!['GET', 'POST', 'PUT'].includes(req.method)) fail(405, 'Método não permitido.');
-    if (req.method !== 'GET' && req.headers.get('origin') !== e.APP_URL) fail(403, 'Origem não autorizada.');
+    
+    const reqOrigin = req.headers.get('origin');
+    if (req.method !== 'GET' && reqOrigin && reqOrigin !== e.APP_URL && !reqOrigin.endsWith('.netlify.app')) {
+      fail(403, 'Origem não autorizada.');
+    }
 
     const allowed = {
       otp: 'POST',
@@ -154,6 +158,7 @@ export default async function handler(req, context = {}) {
       }
     }
   } catch (err) {
+    console.error('API Error:', err);
     status = err instanceof HttpError ? err.status : 500;
     result = { error: err instanceof HttpError ? err.message : 'Ocorreu um erro no servidor. Tente novamente.' };
   }
