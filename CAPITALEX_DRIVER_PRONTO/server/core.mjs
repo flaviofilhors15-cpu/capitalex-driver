@@ -12,12 +12,12 @@ export const fail = (s, m) => { throw new HttpError(s, m); };
 
 export function env() {
   const names = ['APP_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'RATE_LIMIT_SECRET'];
-  const e = Object.fromEntries(names.map(n => [n, process.env[n]]));
+  const e = Object.fromEntries(names.map(n => [n, (process.env[n] || '').replace(/[\r\n\s]+$/, '').trim()]));
   if (names.some(n => !e[n]) || (e.RATE_LIMIT_SECRET && e.RATE_LIMIT_SECRET.length < 16)) {
     fail(503, 'Serviço em configuração. Verifique as variáveis de ambiente na Netlify.');
   }
   e.APP_URL = new URL(e.APP_URL).origin;
-  e.SUPABASE_URL = e.SUPABASE_URL.replace(/\/$/, '');
+  e.SUPABASE_URL = e.SUPABASE_URL.replace(/[\r\n\s/]+$/, '').trim();
   return e;
 }
 
@@ -25,7 +25,8 @@ export async function remote(url, options = {}) {
   let r;
   try {
     r = await fetch(url, { ...options, signal: AbortSignal.timeout(12000) });
-  } catch {
+  } catch (err) {
+    console.error('Erro de conexao com Supabase:', err.message || err, 'URL:', url);
     fail(503, 'Serviço temporariamente indisponível. Tente novamente.');
   }
   const d = await r.json().catch(() => ({}));
@@ -52,8 +53,8 @@ export async function auth(e, path, body, token) {
     method: body === undefined ? 'GET' : 'POST',
     headers: {
       apikey: e.SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {})
+      Authorization: 'Bearer ' + (token || e.SUPABASE_ANON_KEY),
+      'Content-Type': 'application/json'
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {})
   });
@@ -106,13 +107,11 @@ export async function account(e, id, email = '') {
 }
 
 export async function rate(e, key, limit, seconds = 900) {
-  // Proteção contra brute-force
   const digest = createHmac('sha256', e.RATE_LIMIT_SECRET).update(key).digest('hex');
   const ok = await db(e, 'rpc/driver_rate_limit', 'POST', { p_key: digest, p_limit: limit, p_seconds: seconds }).catch(() => true);
   if (ok === false) fail(429, 'Muitas tentativas. Aguarde alguns minutos e tente novamente.');
 }
 
-// Checagem da assinatura manual
 export function checkSubscription(a, userEmail = '') {
   const isAdmin = Boolean(a.is_admin || (userEmail && userEmail.toLowerCase() === 'flaviofilhors15@gmail.com'));
   if (isAdmin) {
