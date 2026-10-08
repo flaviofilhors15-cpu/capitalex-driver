@@ -59,6 +59,24 @@
       <a href="/" style="color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 600;">← Voltar ao Aplicativo</a>
     </header>
 
+    <!-- Card de Login do Administrador (visível se não estiver autenticado) -->
+    <div class="card" id="adminLoginCard" style="border-color: #24534f; background: linear-gradient(135deg, #0e2236 0%, #081725 100%);">
+      <h2 class="card-title" style="color: var(--primary);">🔐 Fazer Login como Administrador</h2>
+      <p class="card-desc">Digite a senha de administrador da conta <strong>flaviofilhors15@gmail.com</strong> para gerenciar os motoristas:</p>
+      <form id="adminLoginForm" style="display: flex; gap: 10px; flex-wrap: wrap;" onsubmit="fazerLoginAdmin(event)">
+        <input type="email" id="adminEmail" value="flaviofilhors15@gmail.com" required style="flex: 1; min-width: 220px;">
+        <input type="password" id="adminPassword" placeholder="Sua senha de administrador" required style="flex: 1; min-width: 220px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); background: #060e18; color: #fff; font-size: 0.95rem;">
+        <button type="submit" class="btn-30" style="padding: 11px 22px;">Entrar no Painel</button>
+      </form>
+      <div id="adminLoginMsg" class="status-msg"></div>
+    </div>
+
+    <!-- Barra de Sessão Conectada -->
+    <div id="adminSessionBar" style="display: none; justify-content: space-between; align-items: center; background: #0c1d2e; border: 1px solid #1f3550; padding: 12px 18px; border-radius: 10px; margin-bottom: 20px;">
+      <span style="font-size: 0.88rem; color: #94a3b8;">Conectado como Administrador: <strong style="color: var(--primary);" id="adminSessionEmail">flaviofilhors15@gmail.com</strong></span>
+      <button onclick="fazerLogoutAdmin()" style="background: transparent; color: #f87171; border: 1px solid rgba(239,68,68,0.3); padding: 5px 12px; font-size: 0.8rem; border-radius: 6px;">Sair</button>
+    </div>
+
     <!-- Liberação Rápida -->
     <div class="card">
       <h2 class="card-title">Liberar ou Renovar Assinatura</h2>
@@ -211,8 +229,49 @@
       renderizarTabela(filtrados);
     }
 
-    // Carrega a lista automaticamente
-    carregarUsuarios();
+    async function checarSessaoAdmin() {
+      try {
+        const s = await api('session');
+        if (s && s.email && (s.billing?.isAdmin || s.email === 'flaviofilhors15@gmail.com')) {
+          document.getElementById('adminLoginCard').style.display = 'none';
+          document.getElementById('adminSessionBar').style.display = 'flex';
+          document.getElementById('adminSessionEmail').textContent = s.email;
+          carregarUsuarios();
+          return true;
+        }
+      } catch {}
+      document.getElementById('adminLoginCard').style.display = 'block';
+      document.getElementById('adminSessionBar').style.display = 'none';
+      return false;
+    }
+
+    async function fazerLoginAdmin(e) {
+      e.preventDefault();
+      const email = document.getElementById('adminEmail').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      const msg = document.getElementById('adminLoginMsg');
+      msg.textContent = 'Autenticando administrador...';
+      msg.style.color = 'var(--muted)';
+
+      try {
+        await api('login', 'POST', { email, password });
+        msg.textContent = '✅ Acesso liberado!';
+        msg.style.color = 'var(--primary)';
+        document.getElementById('adminPassword').value = '';
+        setTimeout(checarSessaoAdmin, 400);
+      } catch (err) {
+        msg.textContent = '❌ ' + (err.message || 'Senha incorreta.');
+        msg.style.color = 'var(--danger)';
+      }
+    }
+
+    async function fazerLogoutAdmin() {
+      await api('logout', 'POST', {}).catch(() => {});
+      location.reload();
+    }
+
+    // Inicialização com verificação de sessão
+    checarSessaoAdmin();
   </script>
 </body>
 </html>
