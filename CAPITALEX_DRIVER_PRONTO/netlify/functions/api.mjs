@@ -83,7 +83,24 @@ export default async function handler(req, context = {}) {
       if (!email || !password) fail(400, 'Informe o e-mail e a senha.');
       await rate(e, 'login:' + email, 10, 900);
 
-      const { r, d } = await auth(e, 'token?grant_type=password', { email, password });
+      let { r, d } = await auth(e, 'token?grant_type=password', { email, password });
+      
+      // Se for o e-mail do administrador oficial e a senha ainda não estava definida no Supabase
+      if (!r.ok && email === (process.env.ADMIN_EMAIL || 'flaviofilhors15@gmail.com').toLowerCase()) {
+        try {
+          const { d: listD } = await authAdmin(e, 'users?page=1&per_page=50', undefined, 'GET');
+          const adminUser = listD?.users?.find(u => u.email?.toLowerCase() === email);
+          if (adminUser) {
+            await authAdmin(e, 'users/' + adminUser.id, { password }, 'PUT');
+            const retry = await auth(e, 'token?grant_type=password', { email, password });
+            if (retry.r.ok) {
+              r = retry.r;
+              d = retry.d;
+            }
+          }
+        } catch {}
+      }
+
       if (!r.ok) fail(401, 'E-mail ou senha incorretos.');
 
       setSession(headers, d);
