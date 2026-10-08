@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <!-- Filtros de brilho neon -->
+    <filter id="neonGlowBYD" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur1" />
+      <feGaussianBlur stdDeviation="16" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softGlowBYD" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Gradientes -->
+    <linearGradient id="skyBYD" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#040b14" />
+      <stop offset="60%" stop-color="#0a1a2b" />
+      <stop offset="100%" stop-color="#122b42" />
+    </linearGradient>
+
+    <linearGradient id="roadBYD" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#081420" />
+      <stop offset="50%" stop-color="#0d2033" />
+      <stop offset="100%" stop-color="#050e17" />
+    </linearGradient>
+
+    <linearGradient id="bydPaint" x1="0%" y1="0%" x2="100%" y2="60%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+      <stop offset="35%" stop-color="#1e3a5f" />
+      <stop offset="70%" stop-color="#0c1929" />
+      <stop offset="100%" stop-color="#060e17" />
+    </linearGradient>
+
+    <linearGradient id="bydWindshield" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0.7" />
+      <stop offset="50%" stop-color="#1e3a5a" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#071524" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="neonGreenTrail" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d6ac" stop-opacity="0" />
+      <stop offset="40%" stop-color="#34d6ac" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#a7f3d0" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="headlightBeamBYD" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85" />
+      <stop offset="40%" stop-color="#7dd3fc" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo Noturno -->
+  <rect width="800" height="450" fill="url(#skyBYD)" />
+
+  <!-- Skyline da Cidade (Metrópole Moderna) -->
+  <g fill="#071320" opacity="0.9">
+    <rect x="50" y="110" width="55" height="140" rx="3" />
+    <rect x="120" y="75" width="70" height="175" rx="3" />
+    <rect x="205" y="120" width="60" height="130" rx="2" />
+    <rect x="280" y="60" width="85" height="190" rx="4" />
+    <rect x="380" y="130" width="50" height="120" rx="2" />
+    <rect x="445" y="85" width="75" height="165" rx="3" />
+    <rect x="535" y="105" width="65" height="145" rx="3" />
+    <rect x="615" y="65" width="80" height="185" rx="4" />
+    <rect x="710" y="125" width="55" height="125" rx="2" />
+  </g>
+
+  <!-- Janelas dos Edifícios -->
+  <g fill="#38bdf8" opacity="0.4">
+    <rect x="135" y="95" width="6" height="8" />
+    <rect x="155" y="120" width="6" height="8" fill="#34d6ac" />
+    <rect x="300" y="80" width="7" height="9" />
+    <rect x="330" y="110" width="7" height="9" fill="#34d6ac" />
+    <rect x="465" y="105" width="6" height="8" />
+    <rect x="635" y="85" width="7" height="9" />
+    <rect x="660" y="115" width="7" height="9" fill="#34d6ac" />
+  </g>
+
+  <!-- Pista da Rodovia em Perspectiva -->
+  <polygon points="0,450 800,450 530,200 270,200" fill="url(#roadBYD)" />
+  <line x1="270" y1="200" x2="0" y2="450" stroke="#1e3b5a" stroke-width="3" />
+  <line x1="530" y1="200" x2="800" y2="450" stroke="#1e3b5a" stroke-width="3" />
+
+  <!-- Faixas da Rodovia com Brilho -->
+  <g stroke="#34d6ac" opacity="0.8" filter="url(#softGlowBYD)">
+    <line x1="400" y1="205" x2="400" y2="225" stroke-width="2" />
+    <line x1="400" y1="240" x2="400" y2="265" stroke-width="3" />
+    <line x1="400" y1="285" x2="400" y2="320" stroke-width="4.5" />
+    <line x1="400" y1="345" x2="400" y2="390" stroke-width="6" />
+    <line x1="400" y1="420" x2="400" y2="450" stroke-width="8" />
+  </g>
+
+  <!-- Linhas Neon da Rodovia Elétrica (Inspirado no BYD Seal / Elétrico) -->
+  <path d="M 140 450 C 270 380, 370 270, 460 210" fill="none" stroke="url(#neonGreenTrail)" stroke-width="6" filter="url(#neonGlowBYD)" />
+  <path d="M 660 450 C 560 380, 450 260, 420 210" fill="none" stroke="#38bdf8" stroke-width="4" opacity="0.6" filter="url(#neonGlowBYD)" />
+
+  <!-- Reflexos Molhados no Asfalto -->
+  <ellipse cx="400" cy="385" rx="270" ry="24" fill="#34d6ac" opacity="0.1" filter="url(#neonGlowBYD)" />
+
+  <!-- VEÍCULO BYD SEAL EM PERSPECTIVA FRONTAL 3/4 -->
+  <g id="bydCar" transform="translate(180, 75)">
+    <!-- Sombra do Carro no Asfalto -->
+    <ellipse cx="230" cy="295" rx="195" ry="22" fill="#01060e" opacity="0.95" filter="url(#softGlowBYD)" />
+
+    <!-- Fachos de Luz dos Faróis LED no Chão -->
+    <polygon points="120,265 0,330 60,370 170,270" fill="url(#headlightBeamBYD)" opacity="0.4" />
+    <polygon points="320,265 420,330 480,370 280,270" fill="url(#headlightBeamBYD)" opacity="0.4" />
+
+    <!-- Roda Esquerda (Perfil esportivo com aro moderno) -->
+    <g transform="translate(90, 275)">
+      <ellipse cx="0" cy="0" rx="28" ry="20" fill="#070c14" stroke="#1e293b" stroke-width="4" />
+      <ellipse cx="0" cy="0" rx="18" ry="12" fill="#1e293b" />
+      <ellipse cx="0" cy="0" rx="8" ry="5" fill="#38bdf8" filter="url(#softGlowBYD)" />
+    </g>
+
+    <!-- Roda Direita -->
+    <g transform="translate(365, 275)">
+      <ellipse cx="0" cy="0" rx="28" ry="20" fill="#070c14" stroke="#1e293b" stroke-width="4" />
+      <ellipse cx="0" cy="0" rx="18" ry="12" fill="#1e293b" />
+      <ellipse cx="0" cy="0" rx="8" ry="5" fill="#38bdf8" filter="url(#softGlowBYD)" />
+    </g>
+
+    <!-- Carroceria Frontal Aerodinâmica Estilo BYD Ocean (Seal) -->
+    <!-- Para-choque e Capô -->
+    <path d="M 60 268 
+             C 55 250, 75 220, 115 205 
+             L 160 175 
+             C 190 145, 235 138, 285 145 
+             L 330 175 
+             C 375 220, 395 250, 390 268 
+             L 360 282 
+             C 320 288, 130 288, 90 282 
+             Z" 
+          fill="url(#bydPaint)" stroke="#224263" stroke-width="1.8" />
+
+    <!-- Para-brisa Dianteiro -->
+    <path d="M 125 200 
+             C 150 160, 190 148, 230 148 
+             C 270 148, 305 160, 325 200 
+             L 290 203 
+             C 240 205, 170 205, 125 200 Z" 
+          fill="url(#bydWindshield)" stroke="#7dd3fc" stroke-width="1" stroke-opacity="0.6" />
+
+    <!-- Linhas do Capô Aerodinâmico -->
+    <path d="M 140 205 Q 230 215 310 205" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.4" />
+    <path d="M 175 210 L 195 245" fill="none" stroke="#475569" stroke-width="1.5" />
+    <path d="M 275 210 L 255 245" fill="none" stroke="#475569" stroke-width="1.5" />
+
+    <!-- FARÓIS ASSINATURA BYD SEAL (LED Matrix & Whiskers) -->
+    <!-- Farol Esquerdo -->
+    <g filter="url(#neonGlowBYD)">
+      <polygon points="80,245 135,232 125,248 85,252" fill="#ffffff" />
+      <path d="M 90 255 C 95 268, 115 272, 130 270" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <!-- Farol Direito -->
+    <g filter="url(#neonGlowBYD)">
+      <polygon points="370,245 315,232 325,248 365,252" fill="#ffffff" />
+      <path d="M 360 255 C 355 268, 335 272, 320 270" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <!-- GRADE DIANTEIRA / EMBLEMA OFICIAL BYD -->
+    <!-- Barra central metálica com logo BYD -->
+    <rect x="185" y="240" width="80" height="18" rx="4" fill="#0b1726" stroke="#1f3b56" stroke-width="1.2" />
+    
+    <!-- Texto do Logotipo BYD Iluminado -->
+    <text x="225" y="253" text-anchor="middle" fill="#ffffff" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="12" font-weight="900" letter-spacing="3" filter="url(#softGlowBYD)">BYD</text>
+
+    <!-- Placa Dianteira "BYD SEAL" -->
+    <g transform="translate(195, 268)">
+      <rect x="0" y="0" width="60" height="12" rx="3" fill="#040b14" stroke="#34d6ac" stroke-width="1" />
+      <text x="30" y="9" text-anchor="middle" fill="#34d6ac" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="7.5" font-weight="800" letter-spacing="1">SEAL EV</text>
+    </g>
+  </g>
+
+  <!-- Tag Oficial BYD + Capitalex Driver Inferior Esquerdo -->
+  <g transform="translate(30, 410)">
+    <rect x="0" y="0" width="220" height="28" rx="14" fill="#071726" fill-opacity="0.9" stroke="#1f3a57" stroke-width="1" />
+    <circle cx="15" cy="14" r="5" fill="#34d6ac" filter="url(#softGlowBYD)" />
+    <text x="28" y="18" fill="#f1f5f9" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="1">BYD • CAPITALEX DRIVER</text>
+  </g>
+
+  <!-- Selo "✦ 100% ELÉTRICO" Inferior Direito -->
+  <g transform="translate(590, 410)">
+    <rect x="0" y="0" width="180" height="28" rx="14" fill="#071726" fill-opacity="0.9" stroke="#1f3a57" stroke-width="1" />
+    <text x="14" y="18" fill="#34d6ac" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="0.8">⚡ 100% ELÉTRICO • BYD</text>
+  </g>
+</svg>

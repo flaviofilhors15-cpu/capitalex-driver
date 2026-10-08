@@ -1,4 +1,4 @@
-import {env, body, auth, authAdmin, user, account, rate, checkSubscription, saveData, setSession, clearSession, cookieValues, fail, HttpError, db} from '../../server/core.mjs';
+import {env, isValidOrigin, body, auth, authAdmin, user, account, rate, checkSubscription, saveData, setSession, clearSession, cookieValues, fail, HttpError, db} from '../../server/core.mjs';
 
 export const config = { path: '/api/:action' };
 
@@ -20,7 +20,7 @@ export default async function handler(req, context = {}) {
     const action = new URL(req.url).pathname.split('/').pop();
 
     if (!['GET', 'POST', 'PUT'].includes(req.method)) fail(405, 'Método não permitido.');
-    if (req.method !== 'GET' && req.headers.get('origin') !== e.APP_URL) fail(403, 'Origem não autorizada.');
+    if (req.method !== 'GET' && !isValidOrigin(req, e)) fail(403, 'Origem não autorizada.');
 
     const allowed = {
       register: 'POST',

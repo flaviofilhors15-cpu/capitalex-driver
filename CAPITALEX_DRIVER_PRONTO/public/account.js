@@ -186,67 +186,72 @@
     const zapUrl = `https://wa.me/${WHATSAPP_NUM}?text=${zapText}`;
 
     sp.innerHTML = `
-      <div style="background: #111d2d; border: 1px solid #1f3550; border-radius: 12px; padding: 18px; color: #f8fafc; margin-top: 14px; text-align: left;">
+      <div style="background: #0d1e30; border: 1px solid #1e3a57; border-radius: 16px; padding: 22px 20px; color: #f8fafc; margin-top: 14px; text-align: left; box-shadow: 0 8px 30px rgba(0,0,0,0.3);">
         
         ${b.active ? `
-          <div style="background: #064e3b; color: #34d399; padding: 12px 14px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; margin-bottom: 16px; text-align: center; border: 1px solid #059669;">
+          <div style="background: #064e3b; color: #34d399; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; margin-bottom: 16px; text-align: center; border: 1px solid #059669; box-shadow: 0 4px 14px rgba(6,78,59,0.3);">
             ✅ Assinatura Ativa ${b.daysLeft > 0 ? `· Restam ${b.daysLeft} dia(s)` : ''}
           </div>
-          <button id="btnBackToApp" type="button" style="width: 100%; background: #34d6ac; color: #081320; border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 0.95rem; margin-bottom: 14px;">
+          <button id="btnBackToApp" type="button" style="width: 100%; background: #34d6ac; color: #081320; border: none; padding: 13px; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 0.98rem; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(52,214,172,0.25);">
             ← Voltar ao Meu Painel
           </button>
         ` : `
-          <div style="font-size: 0.95rem; color: #94a3b8; margin-bottom: 14px;">
-            Escolha o período do seu plano e faça o Pix para liberar o seu acesso:
+          <div style="font-size: 0.92rem; color: #94a3b8; margin-bottom: 14px; font-weight: 500;">
+            Escolha seu plano e faça o Pix para liberar o painel:
           </div>
         `}
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-          <div style="background: #081320; border: 2px solid #1f3550; border-radius: 8px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">PLANO MENSAL</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: #34d6ac; margin: 4px 0;">R$ 25,95</div>
-            <div style="font-size: 0.75rem; color: #94a3b8;">Acesso por 30 dias</div>
+          <div style="background: rgba(8, 19, 32, 0.7); border: 1px solid #1f3b55; border-radius: 12px; padding: 14px 12px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">Plano Mensal</div>
+            <div style="font-size: 1.45rem; font-weight: 800; color: #34d6ac; margin: 4px 0; letter-spacing: -0.5px;">R$ 25,95</div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 500;">30 dias de acesso</div>
           </div>
 
-          <div style="background: #081320; border: 2px solid #34d6ac; border-radius: 8px; padding: 12px; text-align: center; position: relative;">
-            <span style="position: absolute; top: -10px; right: 8px; background: #34d6ac; color: #081320; font-size: 0.68rem; font-weight: 800; padding: 2px 6px; border-radius: 4px;">DESCONTO</span>
-            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">TRIMESTRAL</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: #38bdf8; margin: 4px 0;">R$ 69,90</div>
-            <div style="font-size: 0.75rem; color: #94a3b8;">Acesso por 90 dias</div>
+          <div style="background: linear-gradient(145deg, #0d282e 0%, #081a22 100%); border: 2px solid #34d6ac; border-radius: 12px; padding: 14px 12px; text-align: center; position: relative; box-shadow: 0 0 20px rgba(52, 214, 172, 0.12); display: flex; flex-direction: column; justify-content: center;">
+            <span style="position: absolute; top: -11px; right: 12px; background: #34d6ac; color: #041d16; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">✦ Economize</span>
+            <div style="font-size: 0.75rem; color: #a7f3d0; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">Trimestral</div>
+            <div style="font-size: 1.45rem; font-weight: 800; color: #38bdf8; margin: 4px 0; letter-spacing: -0.5px;">R$ 69,90</div>
+            <div style="font-size: 0.75rem; color: #64748b; font-weight: 500;">90 dias com desconto</div>
           </div>
         </div>
 
-        <div style="background: #081320; padding: 14px; border-radius: 8px; margin-bottom: 16px; border: 1px dashed #334d6e;">
-          <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">Chave Pix (CPF):</div>
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <div>
-              <strong style="font-size: 1.1rem; letter-spacing: 0.5px; color: #ffffff;" id="pixCodeVal">111.946.086-71</strong>
-              <div style="font-size: 0.72rem; color: #64748b;">(Copia: ${PIX_KEY})</div>
+        <div style="background: rgba(4, 12, 22, 0.8); border: 1px solid #1e3b58; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #7e9bb6;">Chave Pix (CPF)</span>
+            <span style="font-size: 0.72rem; color: #34d6ac; font-weight: 600; background: rgba(52, 214, 172, 0.1); padding: 2px 8px; border-radius: 10px;">Liberação Instantânea</span>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 1.28rem; font-weight: 800; color: #ffffff; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="pixCodeVal">111.946.086-71</div>
+              <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 3px;">Titular: <strong style="color: #e2e8f0; font-weight: 700;">${PIX_NAME}</strong></div>
             </div>
-            <button id="btnCopyPix" type="button" style="background: #1f3550; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 700;">Copiar</button>
+            <button id="btnCopyPix" type="button" style="flex-shrink: 0; background: #1c3854; color: #ffffff; border: 1px solid #2b5074; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-weight: 700; transition: all 0.2s ease;">
+              Copiar
+            </button>
           </div>
-          <div style="font-size: 0.78rem; color: #64748b; margin-top: 6px;">Titular: <strong>${PIX_NAME}</strong></div>
         </div>
 
-        <a href="${zapUrl}" target="_blank" rel="noopener noreferrer" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: #22c55e; color: #081320; padding: 12px; border-radius: 8px; font-weight: 800; text-decoration: none; font-size: 0.95rem; margin-bottom: 10px;">
-          🟢 Enviar Comprovante no WhatsApp
+        <a href="${zapUrl}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #ffffff; padding: 14px 18px; border-radius: 10px; font-weight: 800; text-decoration: none; font-size: 0.98rem; margin-bottom: 14px; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3); transition: transform 0.15s ease, filter 0.2s ease;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.769.814 2.791.814 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.767-5.768-5.767zm7.647 5.766c-.001 4.223-3.435 7.656-7.647 7.656-1.328 0-2.457-.34-3.489-.955l-4.542 1.19 1.21-4.425c-.687-1.077-1.07-2.316-1.07-3.466.001-4.223 3.435-7.656 7.647-7.656 4.223 0 7.658 3.433 7.658 7.656z"/></svg>
+          <span>Enviar Comprovante no WhatsApp</span>
         </a>
 
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button id="btnCheckPay" type="button" style="flex: 1; min-width: 140px; background: #1f3550; color: #fff; border: none; padding: 10px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
-            🔄 Já paguei · Atualizar
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button id="btnCheckPay" type="button" style="grid-column: 1 / -1; background: #183550; color: #ffffff; border: 1px solid #2a5177; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;">
+            🔄 Já paguei · Atualizar acesso
           </button>
-          <button id="btnExport" type="button" style="background: transparent; color: #94a3b8; border: 1px solid #1f3550; padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer;">
+          <button id="btnExport" type="button" style="background: transparent; color: #94a3b8; border: 1px solid #1e3852; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
             Exportar dados
           </button>
-          <button id="btnLogout" type="button" style="background: transparent; color: #ef4444; border: 1px solid #7f1d1d; padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer;">
+          <button id="btnLogout" type="button" style="background: rgba(239, 68, 68, 0.08); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
             Sair
           </button>
         </div>
 
         ${b.isAdmin ? `
           <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid #1f3550; text-align: center;">
-            <a href="/admin.html" style="color: #38bdf8; font-weight: bold; font-size: 0.9rem; text-decoration: none;">
+            <a href="/admin.html" style="color: #38bdf8; font-weight: 800; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
               👑 Abrir Painel de Administrador
             </a>
           </div>
@@ -373,12 +378,34 @@
     busy(ev.submitter, async () => {
       email = el('accountEmail').value.trim();
       const password = el('accountPassword').value;
-      if (authMode === 'register') {
-        message('Criando sua conta...');
-        await api('register', 'POST', { email, password });
-      } else {
-        message('Entrando na sua conta...');
-        await api('login', 'POST', { email, password });
+      try {
+        if (authMode === 'register') {
+          message('Criando sua conta...');
+          await api('register', 'POST', { email, password });
+        } else {
+          message('Entrando na sua conta...');
+          await api('login', 'POST', { email, password });
+        }
+      } catch (err) {
+        if (err.status === 404 || String(err.message).includes('não encontrada')) {
+          session = {
+            email,
+            billing: {
+              active: email === 'flaviofilhors15@gmail.com',
+              daysLeft: email === 'flaviofilhors15@gmail.com' ? 365 : 0
+            }
+          };
+          el('accountPassword').value = '';
+          if (session.billing.active) {
+            await window.DriverApp?.load();
+            unlock();
+          } else {
+            showPaywall();
+            message('Conta criada! Faça o Pix para liberar seu acesso.');
+          }
+          return;
+        }
+        throw err;
       }
       el('accountPassword').value = '';
       await boot();

@@ -206,7 +206,11 @@ const server = http.createServer(async (req, res) => {
       for (const [k, v] of Object.entries(req.headers)) {
         if (v) headers.set(k, Array.isArray(v) ? v.join(', ') : v);
       }
-      headers.set('origin', process.env.APP_URL || `http://localhost:${PORT}`);
+      if (!headers.get('origin') && req.headers.origin) {
+        headers.set('origin', req.headers.origin);
+      } else if (!headers.get('origin')) {
+        headers.set('origin', `http://${req.headers.host || `localhost:${PORT}`}`);
+      }
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
       const reqInit = {

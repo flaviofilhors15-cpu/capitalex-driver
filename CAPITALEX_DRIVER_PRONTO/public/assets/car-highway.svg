@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <!-- Filtros de brilho neon -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur1" />
+      <feGaussianBlur stdDeviation="18" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Gradientes de céu e pista -->
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#040b13" />
+      <stop offset="60%" stop-color="#0a1928" />
+      <stop offset="100%" stop-color="#11293e" />
+    </linearGradient>
+
+    <linearGradient id="roadGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#081522" />
+      <stop offset="50%" stop-color="#0c1f31" />
+      <stop offset="100%" stop-color="#050e18" />
+    </linearGradient>
+
+    <!-- Gradiente neon verde e ciano Capitalex -->
+    <linearGradient id="neonTrailGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d6ac" stop-opacity="0" />
+      <stop offset="30%" stop-color="#34d6ac" stop-opacity="0.4" />
+      <stop offset="80%" stop-color="#34d6ac" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#a7f3d0" stop-opacity="1" />
+    </linearGradient>
+
+    <linearGradient id="neonTrailCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0" />
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#7dd3fc" stop-opacity="1" />
+    </linearGradient>
+
+    <linearGradient id="carBody" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="45%" stop-color="#0f172a" />
+      <stop offset="75%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#0a1523" />
+    </linearGradient>
+
+    <linearGradient id="carGlass" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6" />
+      <stop offset="70%" stop-color="#0f2638" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#06121d" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="headlightBeam" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="30%" stop-color="#e0f2fe" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo / Céu Noturno -->
+  <rect width="800" height="450" fill="url(#skyGrad)" />
+
+  <!-- Estrelas e pontos de luz sutis -->
+  <g fill="#93c5fd" opacity="0.4">
+    <circle cx="95" cy="40" r="1.5" />
+    <circle cx="210" cy="70" r="1.2" />
+    <circle cx="340" cy="30" r="1" />
+    <circle cx="480" cy="55" r="1.8" />
+    <circle cx="620" cy="38" r="1.2" />
+    <circle cx="730" cy="80" r="1.5" />
+    <circle cx="150" cy="110" r="1" />
+    <circle cx="580" cy="100" r="1.4" />
+  </g>
+
+  <!-- Silhueta da Cidade ao Fundo (Skyline moderno) -->
+  <g fill="#07131f" opacity="0.85">
+    <rect x="40" y="140" width="45" height="110" rx="2" />
+    <rect x="70" y="110" width="55" height="140" rx="2" />
+    <rect x="110" y="150" width="35" height="100" rx="2" />
+    <rect x="170" y="90" width="70" height="160" rx="3" />
+    <rect x="225" y="130" width="50" height="120" rx="2" />
+    <rect x="300" y="105" width="80" height="145" rx="3" />
+    <rect x="365" y="140" width="45" height="110" rx="2" />
+    <rect x="430" y="80" width="65" height="170" rx="3" />
+    <rect x="480" y="125" width="55" height="125" rx="2" />
+    <rect x="555" y="95" width="75" height="155" rx="3" />
+    <rect x="620" y="135" width="50" height="115" rx="2" />
+    <rect x="685" y="110" width="60" height="140" rx="2" />
+  </g>
+
+  <!-- Janelas iluminadas da cidade -->
+  <g fill="#38bdf8" opacity="0.35">
+    <rect x="80" y="125" width="4" height="6" />
+    <rect x="90" y="145" width="4" height="6" />
+    <rect x="185" y="110" width="5" height="7" />
+    <rect x="200" y="130" width="5" height="7" />
+    <rect x="320" y="120" width="6" height="8" />
+    <rect x="340" y="140" width="6" height="8" />
+    <rect x="445" y="100" width="6" height="8" fill="#34d6ac" opacity="0.5" />
+    <rect x="465" y="120" width="6" height="8" />
+    <rect x="575" y="115" width="5" height="7" />
+    <rect x="595" y="135" width="5" height="7" fill="#34d6ac" opacity="0.4" />
+    <rect x="700" y="130" width="4" height="6" />
+  </g>
+
+  <!-- Pista de Asfalto em Perspectiva -->
+  <polygon points="0,450 800,450 540,210 260,210" fill="url(#roadGrad)" />
+
+  <!-- Guard-rails / Laterais da Rodovia -->
+  <line x1="260" y1="210" x2="0" y2="450" stroke="#1e3a57" stroke-width="4" />
+  <line x1="540" y1="210" x2="800" y2="450" stroke="#1e3a57" stroke-width="4" />
+
+  <!-- Faixas Centrais da Estrada (Marcas viárias com brilho) -->
+  <g stroke="#34d6ac" stroke-width="3" opacity="0.75" filter="url(#softGlow)">
+    <line x1="400" y1="215" x2="400" y2="230" stroke-width="2" />
+    <line x1="400" y1="245" x2="400" y2="265" stroke-width="3" />
+    <line x1="400" y1="285" x2="400" y2="315" stroke-width="4" />
+    <line x1="400" y1="340" x2="400" y2="385" stroke-width="6" />
+    <line x1="400" y1="415" x2="400" y2="450" stroke-width="8" />
+  </g>
+
+  <!-- Rastros de Luz Neon Verde / Esmeralda da Rodovia (Linhas de Velocidade) -->
+  <path d="M 120 450 C 260 380, 360 260, 460 220" fill="none" stroke="url(#neonTrailGreen)" stroke-width="7" filter="url(#neonGlow)" />
+  <path d="M 160 450 C 280 390, 370 270, 470 222" fill="none" stroke="url(#neonTrailGreen)" stroke-width="3.5" filter="url(#neonGlow)" />
+  <path d="M 210 450 C 310 400, 380 280, 478 224" fill="none" stroke="#34d6ac" stroke-width="1.8" filter="url(#softGlow)" />
+
+  <!-- Rastros de Luz Neon Ciano / Azul na Direita -->
+  <path d="M 690 450 C 580 380, 470 260, 420 220" fill="none" stroke="url(#neonTrailCyan)" stroke-width="6" filter="url(#neonGlow)" />
+  <path d="M 640 450 C 550 390, 460 270, 412 222" fill="none" stroke="url(#neonTrailCyan)" stroke-width="2.5" filter="url(#neonGlow)" />
+
+  <!-- Reflexos no Asfalto Molhado -->
+  <ellipse cx="400" cy="385" rx="260" ry="25" fill="#34d6ac" opacity="0.08" filter="url(#neonGlow)" />
+  <ellipse cx="440" cy="370" rx="180" ry="18" fill="#38bdf8" opacity="0.07" filter="url(#neonGlow)" />
+
+  <!-- O CARRO (Sedan Esportivo Moderno) em movimento dinâmico -->
+  <g id="carGroup" transform="translate(140, 20)">
+    <!-- Sombra projetada do veículo no asfalto -->
+    <ellipse cx="280" cy="355" rx="155" ry="18" fill="#020810" opacity="0.95" filter="url(#softGlow)" />
+
+    <!-- Fachos dos Faróis Dianteiros projetados na pista -->
+    <polygon points="390,328 660,300 700,360 410,342" fill="url(#headlightBeam)" opacity="0.35" />
+
+    <!-- Chassi / Rodas -->
+    <!-- Roda Traseira -->
+    <g transform="translate(185, 335)">
+      <circle cx="0" cy="0" r="24" fill="#090d14" stroke="#1e293b" stroke-width="4" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" />
+      <circle cx="0" cy="0" r="7" fill="#34d6ac" opacity="0.8" filter="url(#softGlow)" />
+      <!-- Efeito de rotação da roda com neon -->
+      <line x1="-12" y1="0" x2="12" y2="0" stroke="#34d6ac" stroke-width="2" opacity="0.6" />
+      <line x1="0" y1="-12" x2="0" y2="12" stroke="#34d6ac" stroke-width="2" opacity="0.6" />
+    </g>
+
+    <!-- Roda Dianteira -->
+    <g transform="translate(365, 335)">
+      <circle cx="0" cy="0" r="24" fill="#090d14" stroke="#1e293b" stroke-width="4" />
+      <circle cx="0" cy="0" r="14" fill="#1e293b" />
+      <circle cx="0" cy="0" r="7" fill="#38bdf8" opacity="0.8" filter="url(#softGlow)" />
+      <!-- Efeito de rotação da roda com neon -->
+      <line x1="-12" y1="0" x2="12" y2="0" stroke="#38bdf8" stroke-width="2" opacity="0.6" />
+      <line x1="0" y1="-12" x2="0" y2="12" stroke="#38bdf8" stroke-width="2" opacity="0.6" />
+    </g>
+
+    <!-- Carroceria Principal (Linhas Aerodinâmicas Premium) -->
+    <path d="M 140 330 
+             C 140 315, 150 305, 175 300 
+             L 220 295 
+             C 245 260, 275 240, 320 240 
+             L 365 240 
+             C 400 245, 430 270, 445 295 
+             L 480 310 
+             C 495 315, 495 325, 485 335 
+             L 450 338 
+             C 440 325, 420 315, 395 315 
+             C 370 315, 350 325, 340 338 
+             L 230 338 
+             C 220 325, 200 315, 175 315 
+             C 155 315, 145 322, 140 330 Z" 
+          fill="url(#carBody)" stroke="#334155" stroke-width="1.5" />
+
+    <!-- Vidros e Cabine (Reflexo e Degradê) -->
+    <path d="M 230 292 
+             C 250 263, 275 248, 315 247 
+             L 360 247 
+             C 390 252, 415 272, 430 292 
+             L 350 292 
+             Z" 
+          fill="url(#carGlass)" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.6" />
+
+    <!-- Coluna Central da Cabine -->
+    <line x1="330" y1="247" x2="330" y2="292" stroke="#091420" stroke-width="4" />
+
+    <!-- Vinco Lateral Aerodinâmico e Brilho no capô -->
+    <path d="M 175 305 Q 310 300 450 315" fill="none" stroke="#475569" stroke-width="1.5" />
+    <path d="M 330 252 L 430 298" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.4" />
+
+    <!-- Lanterna Traseira (LED Vermelho / Laranja refinado) -->
+    <path d="M 142 312 L 158 310" stroke="#f43f5e" stroke-width="5" stroke-linecap="round" filter="url(#softGlow)" />
+    <!-- Rastro sutil da lanterna traseira -->
+    <line x1="60" y1="312" x2="142" y2="312" stroke="#f43f5e" stroke-width="2.5" opacity="0.6" filter="url(#neonGlow)" />
+
+    <!-- Farol Dianteiro (LED Matrix Brilhante) -->
+    <polygon points="465,315 486,319 475,324" fill="#ffffff" filter="url(#neonGlow)" />
+    <ellipse cx="482" cy="320" rx="6" ry="3" fill="#38bdf8" filter="url(#neonGlow)" />
+    <line x1="472" y1="322" x2="520" y2="324" stroke="#ffffff" stroke-width="2.5" opacity="0.8" filter="url(#softGlow)" />
+  </g>
+
+  <!-- Selo Executivo Inferior Esquerdo -->
+  <g transform="translate(35, 410)">
+    <rect x="0" y="0" width="220" height="28" rx="14" fill="#081726" fill-opacity="0.85" stroke="#1f3b56" stroke-width="1" />
+    <circle cx="15" cy="14" r="5" fill="#34d6ac" filter="url(#softGlow)" />
+    <text x="28" y="18" fill="#e2e8f0" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="1">CAPITALEX DRIVER</text>
+  </g>
+
+  <!-- Tag de Tecnologia na Estrada Inferior Direito -->
+  <g transform="translate(610, 410)">
+    <rect x="0" y="0" width="155" height="28" rx="14" fill="#081726" fill-opacity="0.85" stroke="#1f3b56" stroke-width="1" />
+    <text x="14" y="18" fill="#34d6ac" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="0.8">✦ NA ESTRADA 24H</text>
+  </g>
+</svg>

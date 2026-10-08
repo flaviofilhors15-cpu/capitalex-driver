@@ -11,14 +11,58 @@ export class HttpError extends Error {
 export const fail = (s, m) => { throw new HttpError(s, m); };
 
 export function env() {
-  const names = ['APP_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'RATE_LIMIT_SECRET'];
+  const appUrl = process.env.APP_URL || process.env.URL || process.env.DEPLOY_PRIME_URL || 'http://localhost:3000';
+  const names = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'RATE_LIMIT_SECRET'];
   const e = Object.fromEntries(names.map(n => [n, process.env[n]]));
   if (names.some(n => !e[n]) || (e.RATE_LIMIT_SECRET && e.RATE_LIMIT_SECRET.length < 16)) {
     fail(503, 'Serviço em configuração. Verifique as variáveis de ambiente na Netlify.');
   }
-  e.APP_URL = new URL(e.APP_URL).origin;
+  e.APP_URL = new URL(appUrl).origin;
   e.SUPABASE_URL = e.SUPABASE_URL.replace(/\/$/, '');
   return e;
+}
+
+export function isValidOrigin(req, e) {
+  if (req.method === 'GET') return true;
+  const origin = req.headers.get('origin');
+  if (!origin) return false;
+
+  try {
+    const originUrl = new URL(origin);
+    const reqUrl = new URL(req.url);
+
+    // 1. Confere com e.APP_URL configurado
+    if (e.APP_URL && origin === e.APP_URL) return true;
+
+    // 2. Confere se é da mesma origem da URL da requisição (Same-Origin nativo)
+    if (origin === reqUrl.origin) return true;
+
+    // 3. Confere com o cabeçalho Host da requisição
+    const hostHeader = req.headers.get('host');
+    if (hostHeader) {
+      if (originUrl.host === hostHeader || originUrl.hostname === hostHeader.split(':')[0]) {
+        return true;
+      }
+    }
+
+    // 4. Ambientes locais e sandboxes (localhost, 127.0.0.1, webcontainer, stackblitz, netlify previews)
+    const h = originUrl.hostname;
+    if (
+      h === 'localhost' ||
+      h === '127.0.0.1' ||
+      h.endsWith('.localhost') ||
+      h.endsWith('.webcontainer.io') ||
+      h.endsWith('.webcontainer-api.io') ||
+      h.endsWith('.stackblitz.io') ||
+      h.endsWith('.netlify.app')
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
 
 export async function remote(url, options = {}) {
