@@ -1,4 +1,4 @@
-import {env, body, auth, user, account, rate, checkSubscription, saveData, setSession, clearSession, cookieValues, fail, HttpError, db} from '../../server/core.mjs';
+import {env, body, auth, authAdmin, user, account, rate, checkSubscription, saveData, setSession, clearSession, cookieValues, fail, HttpError, db} from '../../server/core.mjs';
 
 export const config = { path: '/api/:action' };
 
@@ -20,13 +20,11 @@ export default async function handler(req, context = {}) {
     const action = new URL(req.url).pathname.split('/').pop();
 
     if (!['GET', 'POST', 'PUT'].includes(req.method)) fail(405, 'Método não permitido.');
-    
-    const reqOrigin = req.headers.get('origin');
-    if (req.method !== 'GET' && reqOrigin && reqOrigin !== e.APP_URL && !reqOrigin.endsWith('.netlify.app')) {
-      fail(403, 'Origem não autorizada.');
-    }
+    if (req.method !== 'GET' && req.headers.get('origin') !== e.APP_URL) fail(403, 'Origem não autorizada.');
 
     const allowed = {
+      register: 'POST',
+      login: 'POST',
       otp: 'POST',
       verify: 'POST',
       refresh: 'POST',
@@ -41,11 +39,59 @@ export default async function handler(req, context = {}) {
 
     if (![].concat(allowed[action] || []).includes(req.method)) fail(404, 'Rota não encontrada.');
 
-    if (['otp', 'verify', 'refresh'].includes(action)) {
+    if (['register', 'login', 'otp', 'verify', 'refresh'].includes(action)) {
       await rate(e, 'auth-ip:' + String(context.ip || 'unknown'), 40);
     }
 
-    if (action === 'otp' || action === 'verify') {
+    if (action === 'register') {
+      const p = await body(req, 2048);
+      const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
+      const password = typeof p.password === 'string' ? p.password : '';
+      if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) fail(400, 'Informe um e-mail válido.');
+      if (password.length < 6) fail(400, 'A senha deve ter no mínimo 6 caracteres.');
+      if (password.length > 128) fail(400, 'A senha é muito longa.');
+      await rate(e, 'register:' + email, 5, 900);
+
+      // Cria a conta já confirmada no Supabase sem precisar de código por e-mail
+      const { r: regR, d: regD } = await authAdmin(e, 'users', {
+        email,
+        password,
+        email_confirm: true
+      });
+
+      if (!regR.ok) {
+        const msg = String(regD?.msg || regD?.message || regD?.error_description || '').toLowerCase();
+        if (regR.status === 422 || msg.includes('already') || msg.includes('registered')) {
+          fail(409, 'Este e-mail já possui cadastro. Use a opção "Já tenho conta" para entrar.');
+        }
+        fail(503, 'Não foi possível criar a conta no momento. Tente novamente.');
+      }
+
+      // Autentica o usuário imediatamente com a senha
+      const { r: logR, d: logD } = await auth(e, 'token?grant_type=password', { email, password });
+      if (!logR.ok) fail(500, 'Conta criada, mas ocorreu um erro no acesso. Tente entrar com seu e-mail e senha.');
+
+      setSession(headers, logD);
+      if (logD.user?.id) {
+        await account(e, logD.user.id, email);
+      }
+      result = { ok: true, created: true };
+    } else if (action === 'login') {
+      const p = await body(req, 2048);
+      const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
+      const password = typeof p.password === 'string' ? p.password : '';
+      if (!email || !password) fail(400, 'Informe o e-mail e a senha.');
+      await rate(e, 'login:' + email, 10, 900);
+
+      const { r, d } = await auth(e, 'token?grant_type=password', { email, password });
+      if (!r.ok) fail(401, 'E-mail ou senha incorretos.');
+
+      setSession(headers, d);
+      if (d.user?.id) {
+        await account(e, d.user.id, email);
+      }
+      result = { ok: true };
+    } else if (action === 'otp' || action === 'verify') {
       const p = await body(req, 2048);
       const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
       if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) fail(400, 'Informe um e-mail válido.');
@@ -123,7 +169,7 @@ export default async function handler(req, context = {}) {
         const days = Number(p.days) || 30;
         if (!targetEmail) fail(400, 'Informe o e-mail do motorista.');
 
-        const rows = await db(e, `driver_accounts?customer_email=eq.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at`);
+        const rows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at`);
         if (!rows || rows.length === 0) {
           fail(404, 'Nenhum motorista encontrado com este e-mail. Peça para o motorista fazer o primeiro login no site antes.');
         }
@@ -149,7 +195,7 @@ export default async function handler(req, context = {}) {
         const targetEmail = (p.email || '').trim().toLowerCase();
         if (!targetEmail) fail(400, 'Informe o e-mail do motorista.');
 
-        await db(e, `driver_accounts?customer_email=eq.${encodeURIComponent(targetEmail)}`, 'PATCH', {
+        await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}`, 'PATCH', {
           subscription_status: 'inactive',
           subscription_expires_at: null
         });
@@ -158,7 +204,6 @@ export default async function handler(req, context = {}) {
       }
     }
   } catch (err) {
-    console.error('API Error:', err);
     status = err instanceof HttpError ? err.status : 500;
     result = { error: err instanceof HttpError ? err.message : 'Ocorreu um erro no servidor. Tente novamente.' };
   }

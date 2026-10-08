@@ -3,12 +3,12 @@ CAPITALEX DRIVER — VERSÃO ASSINATURA MANUAL VIA PIX + PAINEL DE ADM
 =====================================================================
 
 Tudo foi configurado conforme solicitado pelo Flavio Rodrigues:
-- Pagamento manual via Pix (sem taxas nem exigências de conta Stripe).
+- Cadastro Direto: o motorista cria a conta diretamente com E-MAIL e SENHA (sem precisar esperar ou digitar código por e-mail).
 - Chave Pix: 11194608671 (CPF - Flavio Rodrigues).
 - Planos disponíveis para o motorista:
     * Plano Mensal: R$ 25,95 (30 dias de acesso)
     * Plano Trimestral com Desconto: R$ 69,90 (90 dias de acesso)
-- Botão direto de WhatsApp: (34) 99983-6438 para envio de comprovante.
+- Botão direto de WhatsApp: (34) 99983-6438 para envio de comprovante com texto pronto.
 - Aviso Amigável: quando faltarem 3 dias ou menos para o vencimento, 
   um aviso no topo do painel avisa o motorista com botão para renovar via Pix.
 - Painel de Administrador Exclusivo em /admin.html para o e-mail:

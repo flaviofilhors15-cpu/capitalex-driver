@@ -108,23 +108,71 @@
     if (st) st.textContent = name === 'stepLogin' ? 'SUA CONTA' : 'CONTA E ASSINATURA';
   }
 
-  function showLogin() {
+  let authMode = 'register';
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    const tabReg = el('tabRegister');
+    const tabLog = el('tabLogin');
+    const title = el('gateTitle');
+    const desc = el('gateDescription');
+    const submitBtn = el('authSubmit');
+    const passInput = el('accountPassword');
+
+    if (mode === 'register') {
+      if (tabReg) {
+        tabReg.style.background = 'var(--green)';
+        tabReg.style.color = '#081320';
+        tabReg.style.border = 'none';
+      }
+      if (tabLog) {
+        tabLog.style.background = '#0b1a29';
+        tabLog.style.color = 'var(--muted)';
+        tabLog.style.border = '1px solid #1f3550';
+      }
+      if (title) title.textContent = 'Criar sua conta';
+      if (desc) desc.textContent = 'Cadastre seu e-mail e crie uma senha para liberar seu acesso direto.';
+      if (submitBtn) submitBtn.textContent = 'Criar conta e ir para o Pix';
+      if (passInput) passInput.setAttribute('autocomplete', 'new-password');
+    } else {
+      if (tabLog) {
+        tabLog.style.background = 'var(--green)';
+        tabLog.style.color = '#081320';
+        tabLog.style.border = 'none';
+      }
+      if (tabReg) {
+        tabReg.style.background = '#0b1a29';
+        tabReg.style.color = 'var(--muted)';
+        tabReg.style.border = '1px solid #1f3550';
+      }
+      if (title) title.textContent = 'Entrar na sua conta';
+      if (desc) desc.textContent = 'Digite seu e-mail e sua senha para entrar no painel.';
+      if (submitBtn) submitBtn.textContent = 'Entrar';
+      if (passInput) passInput.setAttribute('autocomplete', 'current-password');
+    }
+    message('');
+  }
+
+  function showLogin(mode = 'register') {
     session = null;
     stage('stepLogin');
     lock();
-    el('gateTitle').textContent = 'Entre na sua conta';
-    el('gateDescription').textContent = 'Receba um código no seu e-mail. No primeiro acesso, sua conta será criada.';
-    el('emailForm').hidden = false;
-    el('codeForm').hidden = true;
+    const tabs = el('authTabs');
+    if (tabs) tabs.hidden = false;
+    const form = el('authForm');
+    if (form) form.hidden = false;
     const sp = el('subscriptionPanel');
     if (sp) sp.hidden = true;
+    setAuthMode(mode);
   }
 
   function showPaywall() {
     stage('stepPlan');
     lock();
-    el('emailForm').hidden = true;
-    el('codeForm').hidden = true;
+    const tabs = el('authTabs');
+    if (tabs) tabs.hidden = true;
+    const form = el('authForm');
+    if (form) form.hidden = true;
 
     let sp = el('subscriptionPanel');
     if (!sp) return;
@@ -141,12 +189,15 @@
       <div style="background: #111d2d; border: 1px solid #1f3550; border-radius: 12px; padding: 18px; color: #f8fafc; margin-top: 14px; text-align: left;">
         
         ${b.active ? `
-          <div style="background: #064e3b; color: #34d399; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; margin-bottom: 16px; text-align: center;">
+          <div style="background: #064e3b; color: #34d399; padding: 12px 14px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; margin-bottom: 16px; text-align: center; border: 1px solid #059669;">
             ✅ Assinatura Ativa ${b.daysLeft > 0 ? `· Restam ${b.daysLeft} dia(s)` : ''}
           </div>
+          <button id="btnBackToApp" type="button" style="width: 100%; background: #34d6ac; color: #081320; border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 0.95rem; margin-bottom: 14px;">
+            ← Voltar ao Meu Painel
+          </button>
         ` : `
           <div style="font-size: 0.95rem; color: #94a3b8; margin-bottom: 14px;">
-            Escolha o período do seu plano e faça o Pix para liberar o painel:
+            Escolha o período do seu plano e faça o Pix para liberar o seu acesso:
           </div>
         `}
 
@@ -168,10 +219,13 @@
         <div style="background: #081320; padding: 14px; border-radius: 8px; margin-bottom: 16px; border: 1px dashed #334d6e;">
           <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">Chave Pix (CPF):</div>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <strong style="font-size: 1.1rem; letter-spacing: 1px; color: #ffffff;" id="pixCodeVal">${PIX_KEY}</strong>
-            <button id="btnCopyPix" type="button" style="background: #1f3550; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Copiar</button>
+            <div>
+              <strong style="font-size: 1.1rem; letter-spacing: 0.5px; color: #ffffff;" id="pixCodeVal">111.946.086-71</strong>
+              <div style="font-size: 0.72rem; color: #64748b;">(Copia: ${PIX_KEY})</div>
+            </div>
+            <button id="btnCopyPix" type="button" style="background: #1f3550; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 700;">Copiar</button>
           </div>
-          <div style="font-size: 0.78rem; color: #64748b; margin-top: 4px;">Titular: <strong>${PIX_NAME}</strong></div>
+          <div style="font-size: 0.78rem; color: #64748b; margin-top: 6px;">Titular: <strong>${PIX_NAME}</strong></div>
         </div>
 
         <a href="${zapUrl}" target="_blank" rel="noopener noreferrer" style="display: block; width: 100%; box-sizing: border-box; text-align: center; background: #22c55e; color: #081320; padding: 12px; border-radius: 8px; font-weight: 800; text-decoration: none; font-size: 0.95rem; margin-bottom: 10px;">
@@ -201,24 +255,59 @@
       </div>
     `;
 
+    document.getElementById('btnBackToApp')?.addEventListener('click', () => {
+      unlock();
+    });
+
     document.getElementById('btnCopyPix')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(PIX_KEY);
       const b = document.getElementById('btnCopyPix');
-      if (b) {
-        b.textContent = 'Copiado!';
-        b.style.background = '#22c55e';
-        b.style.color = '#081320';
-        setTimeout(() => {
-          b.textContent = 'Copiar';
-          b.style.background = '#1f3550';
-          b.style.color = '#fff';
-        }, 2000);
+      const onCopied = () => {
+        if (b) {
+          b.textContent = 'Copiado!';
+          b.style.background = '#22c55e';
+          b.style.color = '#081320';
+          setTimeout(() => {
+            b.textContent = 'Copiar';
+            b.style.background = '#1f3550';
+            b.style.color = '#fff';
+          }, 2000);
+        }
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(PIX_KEY).then(onCopied).catch(() => {
+          fallbackCopyText(PIX_KEY);
+          onCopied();
+        });
+      } else {
+        fallbackCopyText(PIX_KEY);
+        onCopied();
       }
     });
 
-    document.getElementById('btnCheckPay')?.addEventListener('click', () => boot());
+    document.getElementById('btnCheckPay')?.addEventListener('click', async () => {
+      message('Verificando status do pagamento...');
+      await boot();
+      if (!session?.billing?.active) {
+        message('Pagamento ainda não confirmado. Envie o comprovante no WhatsApp e aguarde alguns instantes.');
+      }
+    });
     document.getElementById('btnExport')?.addEventListener('click', exportData);
     document.getElementById('btnLogout')?.addEventListener('click', logout);
+  }
+
+  function fallbackCopyText(text) {
+    try {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.style.position = 'fixed';
+      area.style.top = '-9999px';
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+    } catch {}
   }
 
   async function exportData() {
@@ -276,30 +365,24 @@
     }
   }
 
-  el('emailForm')?.addEventListener('submit', ev => {
+  el('tabRegister')?.addEventListener('click', () => setAuthMode('register'));
+  el('tabLogin')?.addEventListener('click', () => setAuthMode('login'));
+
+  el('authForm')?.addEventListener('submit', ev => {
     ev.preventDefault();
     busy(ev.submitter, async () => {
       email = el('accountEmail').value.trim();
-      await api('otp', 'POST', { email });
-      el('emailForm').hidden = true;
-      el('codeForm').hidden = false;
-      message('Enviamos um código para ' + email + '. Confira também a caixa de spam.');
-      el('accountCode')?.focus();
-    });
-  });
-
-  el('codeForm')?.addEventListener('submit', ev => {
-    ev.preventDefault();
-    busy(ev.submitter, async () => {
-      await api('verify', 'POST', { email, code: el('accountCode').value.trim() });
-      el('accountCode').value = '';
+      const password = el('accountPassword').value;
+      if (authMode === 'register') {
+        message('Criando sua conta...');
+        await api('register', 'POST', { email, password });
+      } else {
+        message('Entrando na sua conta...');
+        await api('login', 'POST', { email, password });
+      }
+      el('accountPassword').value = '';
       await boot();
     });
-  });
-
-  el('changeEmail')?.addEventListener('click', () => {
-    showLogin();
-    message('Você pode solicitar outro código após 60 segundos.');
   });
 
   const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('capitalex-session') : null;
@@ -309,7 +392,7 @@
     channel?.postMessage('logout');
     window.DriverApp?.clear();
     session = null;
-    showLogin();
+    showLogin('login');
     message('Sessão encerrada.');
   }
 
@@ -317,7 +400,7 @@
     if (ev.data === 'logout') {
       window.DriverApp?.clear();
       session = null;
-      showLogin();
+      showLogin('login');
       message('Sessão encerrada em outra aba.');
     }
   });
