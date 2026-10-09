@@ -47,3 +47,126 @@ body.locked .access-nav{display:block}
 body.account-view footer{max-width:1160px;margin:auto}
 @media(max-width:1050px){.account-gate{grid-template-columns:1fr;max-width:620px;gap:28px}.access-intro h1 br{display:none}.access-intro h1 br:after{content:' '}.access-intro ul{display:none}.access-steps{display:flex;flex-wrap:wrap;gap:18px;margin:22px 0}.plan-summary{max-width:none}.plan-summary .small{margin-bottom:0}}
 @media(max-width:700px){body.locked aside{padding-bottom:18px}body.locked .access-nav{display:none}.account-gate{padding:0;min-height:0}.access-intro h1{font-size:30px}.access-card{padding:22px}.access-steps{gap:12px}.access-steps li{font-size:12px;gap:6px}.access-steps li>span{width:26px;height:26px}.plan-summary .plan-price{margin-top:8px}.account-view .workspace{padding-top:24px}}
+
+/* Mobile Bottom Bar, Sheets and Mobile-First Optimizations */
+.mobile-bottom-bar{display:none}
+.mobile-sheet{display:none}
+
+@media(max-width:768px){
+  aside{position:sticky;top:0;z-index:40;width:100%!important;padding:8px 14px!important;border-right:0!important;border-bottom:1px solid var(--line)!important;display:flex!important;flex-direction:row!important;justify-content:space-between!important;align-items:center!important;background:rgba(10,23,37,0.95)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+  aside .brand-capitalex{max-width:180px!important;flex-direction:row!important;align-items:center!important;gap:8px!important}
+  aside .brand-image{max-width:110px!important;padding:4px 8px!important}
+  aside .brand-product{display:none!important}
+  aside nav{display:none!important}
+  .side-foot{display:none!important}
+  body.locked .access-nav{display:none!important}
+
+  .workspace{margin-left:0!important;padding:16px 14px calc(90px + env(safe-area-inset-bottom, 0px))!important;max-width:100%!important}
+
+  /* Header & Actions */
+  header{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:8px!important;margin-bottom:14px!important}
+  header h1{font-size:24px!important;letter-spacing:-0.7px!important}
+  header #subtitle{font-size:13px!important;margin:2px 0 6px!important}
+  .header-actions{display:flex!important;width:100%!important;overflow-x:auto!important;flex-wrap:nowrap!important;gap:8px!important;padding-bottom:4px!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}
+  .header-actions::-webkit-scrollbar{display:none!important}
+  .header-actions button{flex-shrink:0!important;white-space:nowrap!important;padding:8px 12px!important;font-size:13px!important;min-height:38px!important}
+  .header-actions button[data-action="income"]{display:none!important}
+
+  /* KPI Cards: Saldo in High Highlight */
+  .cards{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;margin-bottom:16px!important}
+  .card.feature{grid-column:1 / -1!important;order:-1!important;padding:20px 18px!important;background:linear-gradient(135deg,#123e33 0%,#0b2229 100%)!important;border:1px solid #287a66!important;box-shadow:0 8px 24px rgba(4,30,24,0.4)!important}
+  .card.feature .label{font-size:13px!important;color:#9fe8d4!important;text-transform:uppercase!important;letter-spacing:0.8px!important}
+  .card.feature .value{font-size:32px!important;letter-spacing:-1px!important;margin:6px 0!important}
+  .card{padding:14px 12px!important;border-radius:14px!important}
+  .card .value{font-size:22px!important}
+  .card .label{font-size:12.5px!important}
+
+  /* Split & Panels */
+  .split{grid-template-columns:1fr!important;gap:14px!important}
+  .panel{padding:16px!important;border-radius:16px!important}
+  .panel-head{margin-bottom:12px!important}
+  .panel-head h2{font-size:18px!important}
+
+  /* Toolbar */
+  .toolbar{gap:10px!important;margin:0 0 16px!important;font-size:13px!important}
+  .toolbar label{width:100%!important;justify-content:space-between!important}
+  .toolbar select{flex:1!important;min-height:42px!important;font-size:14px!important}
+  .toolbar #periodLabel{width:100%!important;margin:0!important;font-size:12px!important}
+
+  /* Transaction Feed (Extrato de Lançamentos) instead of broken table */
+  .table-wrap{overflow:visible!important}
+  .table-wrap table{display:block!important;width:100%!important}
+  .table-wrap thead{display:none!important}
+  .table-wrap tbody{display:flex!important;flex-direction:column!important;gap:10px!important}
+  .table-wrap tr{display:grid!important;grid-template-columns:1fr auto!important;grid-template-areas:"date amount" "name amount" "details details" "actions actions"!important;gap:4px 10px!important;padding:14px!important;border-radius:14px!important;background:#0f2235!important;border:1px solid #1f3a56!important;box-shadow:0 4px 14px rgba(0,0,0,0.2)!important;align-items:center!important}
+  .table-wrap td{border:none!important;padding:0!important}
+  .table-wrap td:nth-child(1){grid-area:date;font-size:11.5px;color:var(--muted);font-weight:500}
+  .table-wrap td:nth-child(2){grid-area:name;font-size:15px;font-weight:750;color:#ffffff;line-height:1.3}
+  .table-wrap td:nth-child(2) small{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:2px}
+  .table-wrap td:nth-child(3){grid-area:details;font-size:12.5px;color:var(--muted);margin-top:4px;padding-top:6px;border-top:1px dashed rgba(255,255,255,0.08);line-height:1.4}
+  .table-wrap td:nth-child(4){grid-area:amount;font-size:18px;font-weight:800;text-align:right;letter-spacing:-0.5px;white-space:nowrap}
+  .table-wrap td:nth-child(4).positive{color:var(--green)}
+  .table-wrap td:nth-child(4).negative{color:var(--orange)}
+  .table-wrap td:nth-child(5){grid-area:actions;display:flex;justify-content:flex-end;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  .table-wrap td:nth-child(5) button{min-height:38px;padding:7px 14px;font-size:13px;border-radius:8px;font-weight:650}
+
+  /* Fixed Mobile Bottom Bar */
+  .mobile-bottom-bar{display:flex!important;position:fixed!important;bottom:0!important;left:0!important;right:0!important;height:62px!important;padding-bottom:env(safe-area-inset-bottom, 0px)!important;background:rgba(9,21,34,0.96)!important;backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;border-top:1px solid rgba(40,68,96,0.6)!important;box-shadow:0 -8px 24px rgba(0,0,0,0.4)!important;z-index:90!important;align-items:center!important;justify-content:space-around!important}
+  body.locked .mobile-bottom-bar,body.account-view .mobile-bottom-bar{display:none!important}
+  .mobile-nav-item{flex:1!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;color:var(--muted)!important;text-decoration:none!important;font-size:11px!important;font-weight:600!important;padding:6px 0!important;background:transparent!important;border:none!important;cursor:pointer!important;-webkit-tap-highlight-color:transparent}
+  .mobile-nav-item svg{width:22px!important;height:22px!important;stroke:var(--muted)!important;transition:all 0.15s ease}
+  .mobile-nav-item.active{color:var(--green)!important;font-weight:750!important}
+  .mobile-nav-item.active svg{stroke:var(--green)!important;transform:translateY(-1px)}
+  .mobile-nav-item:active{transform:scale(0.94)}
+
+  /* Central Action FAB (+) */
+  .mobile-fab{width:52px!important;height:52px!important;border-radius:50%!important;background:linear-gradient(135deg,#34d6ac 0%,#20b891 100%)!important;color:#06271f!important;border:3px solid #091522!important;box-shadow:0 4px 18px rgba(52,214,172,0.45)!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;margin-top:-26px!important;flex-shrink:0!important;transition:transform 0.15s ease,box-shadow 0.15s ease;-webkit-tap-highlight-color:transparent}
+  .mobile-fab svg{width:28px!important;height:28px!important;stroke:#06271f!important}
+  .mobile-fab:active{transform:scale(0.92) translateY(2px)!important}
+
+  /* Bottom Sheets */
+  .mobile-sheet{display:block!important;position:fixed!important;inset:auto 0 0 0!important;width:100%!important;max-width:100%!important;max-height:85dvh!important;border-radius:24px 24px 0 0!important;border:1px solid #1f3f60!important;border-bottom:none!important;background:#0b1a2a!important;color:var(--text)!important;padding:20px 18px calc(24px + env(safe-area-inset-bottom, 0px))!important;margin:0!important;box-shadow:0 -12px 50px rgba(0,0,0,0.75)!important;overflow-y:auto!important;animation:sheetSlideUp 0.25s cubic-bezier(0.16,1,0.3,1)!important}
+  .mobile-sheet::backdrop{background:rgba(4,10,18,0.75)!important;backdrop-filter:blur(4px)!important}
+  @keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .sheet-head h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-0.3px}
+  .sheet-options{display:flex;flex-direction:column;gap:12px}
+  .sheet-option-btn{display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;border:1px solid #203a54;background:#102438;color:#fff;text-align:left;cursor:pointer;min-height:68px;width:100%}
+  .sheet-option-btn:active{transform:scale(0.98);background:#142e47}
+  .sheet-option-btn.primary-income{border-color:rgba(52,214,172,0.35);background:linear-gradient(135deg,#102e3b 0%,#0d2232 100%)}
+  .sheet-option-btn.primary-daily{border-color:rgba(67,166,255,0.35);background:linear-gradient(135deg,#122c45 0%,#0d2033 100%)}
+  .sheet-option-btn.primary-expense{border-color:rgba(255,180,107,0.35);background:linear-gradient(135deg,#2a241e 0%,#171c26 100%)}
+  .sheet-icon{font-size:26px;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.06);flex-shrink:0}
+  .sheet-text strong{display:block;font-size:16px;font-weight:750;margin-bottom:2px}
+  .sheet-text small{display:block;color:var(--muted);font-size:13px}
+  .sheet-menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .sheet-menu-item{display:flex;align-items:center;gap:10px;padding:14px 12px;border-radius:12px;background:#11253a;border:1px solid #1f3c5b;color:var(--text);text-decoration:none;font-size:13.5px;font-weight:650;cursor:pointer}
+  .sheet-menu-item:active{background:#193856}
+  .sheet-menu-item svg{width:20px;height:20px;color:var(--green);flex-shrink:0}
+  .sheet-footer{border-top:1px solid var(--line);padding-top:14px}
+
+  /* Form Modal as Native Bottom Sheet */
+  dialog#modal{position:fixed!important;inset:auto 0 0 0!important;width:100%!important;max-width:100%!important;max-height:90dvh!important;border-radius:22px 22px 0 0!important;border:1px solid #1f3f60!important;border-bottom:none!important;padding:20px 18px calc(24px + env(safe-area-inset-bottom, 0px))!important;margin:0!important;box-shadow:0 -10px 40px rgba(0,0,0,0.75)!important;animation:sheetSlideUp 0.25s cubic-bezier(0.16,1,0.3,1)!important}
+  dialog#modal .modal-head{margin-bottom:16px!important}
+  dialog#modal input,dialog#modal select{font-size:16px!important;min-height:48px!important;border-radius:10px!important}
+  dialog#modal .form-actions{margin-top:20px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}
+  dialog#modal .form-actions button{width:100%!important;min-height:48px!important;font-size:15px!important;justify-content:center!important}
+
+  /* Account Gate (Login/Cadastro) */
+  .account-gate{display:flex!important;flex-direction:column!important;padding:12px 14px!important;gap:18px!important;min-height:0!important}
+  .access-card{order:1!important;padding:20px 16px!important;border-radius:18px!important}
+  .card-hero-banner{aspect-ratio:21/9!important;max-height:140px!important;margin-bottom:14px!important}
+  .access-card h2{font-size:22px!important}
+  .access-intro{order:2!important;margin-top:10px!important}
+  .access-intro h1{font-size:26px!important;line-height:1.2!important;margin:12px 0!important}
+  .access-steps{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+  .access-steps li{font-size:13px!important}
+  .plan-summary{padding-top:16px!important}
+  .plan-summary .plan-price{margin-top:6px!important;font-size:28px!important}
+
+  /* Donut chart mobile alignment */
+  .donut-layout{display:flex!important;flex-direction:column!important;align-items:center!important;gap:16px!important}
+  .donut{width:190px!important;height:190px!important;max-width:100%!important}
+  .donut-legend{width:100%!important;min-width:0!important}
+}
+
