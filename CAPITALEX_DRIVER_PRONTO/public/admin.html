@@ -128,21 +128,29 @@
     <!-- Dashboard -->
     <div id="adminPanel">
       
-      <!-- Metrics -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <span class="metric-title">Assinantes Ativos</span>
-          <span class="metric-value metric-green" id="metricAtivos">0</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-title">MRR Estimado (Recorrência)</span>
-          <span class="metric-value" id="metricMRR">R$ 0,00</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-title" style="color: var(--orange-text);">Vencendo em 3 Dias</span>
-          <span class="metric-value" id="metricVencendo" style="color: var(--orange-text);">0</span>
-        </div>
+      <!-- Nav Tabs -->
+      <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
+        <button class="filter-btn active" id="tabGeneral" onclick="switchAdminTab('general')">Painel Geral</button>
+        <button class="filter-btn" id="tabSales" onclick="switchAdminTab('sales')">💰 Meu Lucro & Vendas</button>
       </div>
+
+      <!-- General Tab -->
+      <div id="tabContentGeneral">
+        <!-- Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-title">Assinantes Ativos</span>
+            <span class="metric-value metric-green" id="metricAtivos">0</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-title">MRR Estimado (Recorrência)</span>
+            <span class="metric-value" id="metricMRR">R$ 0,00</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-title" style="color: var(--orange-text);">Vencendo em 3 Dias</span>
+            <span class="metric-value" id="metricVencendo" style="color: var(--orange-text);">0</span>
+          </div>
+        </div>
 
       <!-- Quick Activation -->
       <div class="panel-section">
@@ -195,19 +203,51 @@
           </table>
         </div>
       </div>
+      </div>
+      
+      <!-- Sales Tab -->
+      <div id="tabContentSales" style="display: none;">
+        <div class="metrics-grid">
+          <div class="metric-card" style="background: linear-gradient(135deg, rgba(52, 214, 172, 0.1) 0%, transparent 100%); border-color: var(--green);">
+            <span class="metric-title" style="color: var(--green);">Lucro Total (Vendas)</span>
+            <span class="metric-value metric-green" id="metricTotalSales">R$ 0,00</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-title">Vendas este Mês</span>
+            <span class="metric-value" id="metricMonthSales">R$ 0,00</span>
+          </div>
+        </div>
+        
+        <div class="panel-section">
+          <div class="panel-header">
+            <div>
+              <h2>Desempenho de Vendas</h2>
+              <p>O gráfico sobe automaticamente toda vez que você libera +30 ou +90 dias.</p>
+            </div>
+          </div>
+          <div style="height: 300px; width: 100%;">
+            <canvas id="salesChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
     </div>
   </div>
-
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.js"></script>
   <script>
     let todosUsuarios = [];
     let currentFilter = 'all';
+    let salesChart = null;
+
+    // Persistência local para Vendas e Usuários Ocultos
+    function getHiddenUsers() { return JSON.parse(localStorage.getItem('admin_hidden_users') || '[]'); }
+    function setHiddenUser(email) { const list = getHiddenUsers(); if(!list.includes(email)) list.push(email); localStorage.setItem('admin_hidden_users', JSON.stringify(list)); }
+    function getSales() { return JSON.parse(localStorage.getItem('admin_sales') || '[]'); }
+    function addSale(value, plan) { const sales = getSales(); sales.push({ date: new Date().toISOString(), value, plan }); localStorage.setItem('admin_sales', JSON.stringify(sales)); renderChart(); }
 
     async function api(rota, metodo = 'GET', body = null) {
-      const res = await fetch('/api/' + rota, {
-        method: metodo,
-        headers: body ? { 'Content-Type': 'application/json' } : {},
-        body: body ? JSON.stringify(body) : null
-      });
+      const res = await fetch('/api/' + rota, { method: metodo, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Erro na requisição');
       return data;
@@ -218,8 +258,7 @@
       try {
         const s = await api('session');
         if (s && s.email && (s.billing?.isAdmin || s.email === 'flaviofilhors15@gmail.com')) {
-          showAdminPanel(s.email);
-          return true;
+          showAdminPanel(s.email); return true;
         }
       } catch {}
       document.getElementById('adminLoginCard').style.display = 'block';
@@ -232,18 +271,14 @@
       const email = document.getElementById('adminEmail').value.trim().toLowerCase();
       const password = document.getElementById('adminPassword').value;
       const msg = document.getElementById('adminLoginMsg');
-      msg.textContent = 'Autenticando...';
-      msg.style.color = 'var(--muted)';
-
+      msg.textContent = 'Autenticando...'; msg.style.color = 'var(--muted)';
       try {
         await api('login', 'POST', { email, password });
-        msg.textContent = '✅ Acesso liberado!';
-        msg.style.color = 'var(--green)';
+        msg.textContent = '✅ Acesso liberado!'; msg.style.color = 'var(--green)';
         document.getElementById('adminPassword').value = '';
         setTimeout(() => checarSessaoAdmin(), 400);
       } catch (err) {
-        msg.textContent = '❌ ' + (err.message || 'Senha incorreta.');
-        msg.style.color = 'var(--red)';
+        msg.textContent = '❌ ' + (err.message || 'Senha incorreta.'); msg.style.color = 'var(--red)';
       }
     }
 
@@ -259,6 +294,15 @@
       document.getElementById('headerAdminEmail').textContent = email;
       document.getElementById('logoutBtn').style.display = 'inline-flex';
       carregarUsuarios();
+      renderChart();
+    }
+
+    // Tabs
+    function switchAdminTab(tab) {
+      document.getElementById('tabGeneral').classList.toggle('active', tab === 'general');
+      document.getElementById('tabSales').classList.toggle('active', tab === 'sales');
+      document.getElementById('tabContentGeneral').style.display = tab === 'general' ? 'block' : 'none';
+      document.getElementById('tabContentSales').style.display = tab === 'sales' ? 'block' : 'none';
     }
 
     // Actions
@@ -267,25 +311,31 @@
       const msg = document.getElementById('statusMsg');
       if (!email) return alert('Digite o e-mail primeiro.');
 
-      msg.textContent = 'Processando...';
-      msg.style.color = 'var(--muted)';
-
+      msg.textContent = 'Processando...'; msg.style.color = 'var(--muted)';
       try {
         const res = await api('admin-activate', 'POST', { email, days: dias });
-        msg.textContent = '✅ ' + res.message;
-        msg.style.color = 'var(--green)';
-        document.getElementById('targetEmail').value = ''; // Limpa após sucesso
+        msg.textContent = '✅ ' + res.message; msg.style.color = 'var(--green)';
+        document.getElementById('targetEmail').value = '';
+        
+        // Adiciona a venda ao lucro
+        const price = dias === 30 ? 25.95 : 69.90;
+        addSale(price, dias);
+
+        // Se estava arquivado/oculto, volta a aparecer automaticamente (remove do array)
+        const hidden = getHiddenUsers();
+        if (hidden.includes(email.toLowerCase())) {
+          localStorage.setItem('admin_hidden_users', JSON.stringify(hidden.filter(h => h !== email.toLowerCase())));
+        }
         carregarUsuarios();
       } catch (err) {
-        msg.textContent = '❌ ' + err.message;
-        msg.style.color = 'var(--red)';
+        msg.textContent = '❌ ' + err.message; msg.style.color = 'var(--red)';
       }
     }
 
     async function bloquearAcesso() {
       const email = document.getElementById('targetEmail').value.trim();
       if (!email) return alert('Digite o e-mail do motorista.');
-      if (!confirm(`Deseja realmente cortar o acesso de ${email}?`)) return;
+      if (!confirm(`Deseja bloquear o acesso de ${email}?`)) return;
 
       try {
         const res = await api('admin-block', 'POST', { email });
@@ -294,6 +344,18 @@
       } catch (err) {
         alert('❌ Erro: ' + err.message);
       }
+    }
+
+    async function ocultarUsuario(email) {
+      if (!confirm(`Arquivar e ocultar ${email} do painel geral? Você não verá mais esse e-mail a menos que ative novamente.`)) return;
+      
+      // Oculta visualmente e também cancela a assinatura por segurança
+      try {
+        await api('admin-block', 'POST', { email });
+      } catch(e) {} // Ignora se já estiver inativo
+      
+      setHiddenUser(email.toLowerCase());
+      carregarUsuarios();
     }
 
     // Data Management
@@ -310,18 +372,15 @@
     }
 
     function atualizarMetricas() {
-      let ativos = 0;
-      let vencendo = 0;
+      let ativos = 0; let vencendo = 0;
+      const hidden = getHiddenUsers();
       todosUsuarios.forEach(u => {
-        if (u.is_active) {
+        if (!hidden.includes(u.email.toLowerCase()) && u.is_active) {
           ativos++;
           if (u.days_left <= 3) vencendo++;
         }
       });
-      
-      // Assumindo valor mensal conservador de R$ 25,95 para MRR
       const mrr = ativos * 25.95;
-      
       document.getElementById('metricAtivos').textContent = ativos;
       document.getElementById('metricMRR').textContent = mrr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       document.getElementById('metricVencendo').textContent = vencendo;
@@ -336,23 +395,20 @@
 
     function aplicarFiltros() {
       const termo = document.getElementById('filtroEmail').value.toLowerCase().trim();
+      const hidden = getHiddenUsers();
       
-      let filtrados = todosUsuarios.filter(u => u.email.toLowerCase().includes(termo));
+      // Remove os ocultos da lista base
+      let filtrados = todosUsuarios.filter(u => u.email.toLowerCase().includes(termo) && !hidden.includes(u.email.toLowerCase()));
       
-      if (currentFilter === 'active') {
-        filtrados = filtrados.filter(u => u.is_active && u.days_left > 3);
-      } else if (currentFilter === 'expiring') {
-        filtrados = filtrados.filter(u => u.is_active && u.days_left <= 3);
-      } else if (currentFilter === 'expired') {
-        filtrados = filtrados.filter(u => !u.is_active);
-      }
+      if (currentFilter === 'active') filtrados = filtrados.filter(u => u.is_active && u.days_left > 3);
+      else if (currentFilter === 'expiring') filtrados = filtrados.filter(u => u.is_active && u.days_left <= 3);
+      else if (currentFilter === 'expired') filtrados = filtrados.filter(u => !u.is_active);
       
       renderizarTabela(filtrados);
     }
 
     function copiarEmail(email) {
       navigator.clipboard.writeText(email);
-      // Feedback rápido
       const toast = document.createElement('div');
       toast.textContent = 'E-mail copiado!';
       toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--green); color:#081320; padding:10px 20px; border-radius:8px; font-weight:700; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.2);';
@@ -397,11 +453,90 @@
             <td>
               <div class="actions-cell">
                 <button onclick="selecionarUsuario('${u.email}')" class="btn btn-30" title="Renovar / Editar">Renovar</button>
+                <button onclick="ocultarUsuario('${u.email}')" class="btn btn-block" title="Ocultar do Painel">Ocultar</button>
               </div>
             </td>
           </tr>
         `;
       }).join('');
+    }
+
+    // Chart logic
+    function renderChart() {
+      if(!window.Chart) return setTimeout(renderChart, 200);
+      const sales = getSales();
+      let total = 0;
+      let monthTotal = 0;
+      const today = new Date();
+      const currentMonth = today.toISOString().slice(0, 7);
+      
+      const byDay = {};
+      
+      sales.forEach(s => {
+        total += s.value;
+        const sMonth = s.date.slice(0, 7);
+        if (sMonth === currentMonth) monthTotal += s.value;
+        
+        const day = s.date.slice(0, 10);
+        byDay[day] = (byDay[day] || 0) + s.value;
+      });
+
+      document.getElementById('metricTotalSales').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('metricMonthSales').textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      // Build array of last 14 days
+      const labels = [];
+      const data = [];
+      for(let i=13; i>=0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayKey = d.toISOString().slice(0, 10);
+        labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+        data.push(byDay[dayKey] || 0);
+      }
+
+      if (salesChart) salesChart.destroy();
+      const ctx = document.getElementById('salesChart').getContext('2d');
+      Chart.defaults.color = '#849fb8';
+      Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+      
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(52, 214, 172, 0.5)');
+      gradient.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
+      
+      salesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Vendas diárias (R$)',
+            data,
+            backgroundColor: gradient,
+            borderColor: '#34d6ac',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#081320',
+            pointBorderColor: '#34d6ac',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { 
+            legend: { display: false }, 
+            tooltip: { cornerRadius: 8, padding: 12, backgroundColor: '#081320', titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }, displayColors: false } 
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#1f3550' }, border: { display: false }, ticks: { callback: v => 'R$ ' + v } },
+            x: { grid: { display: false }, border: { display: false } }
+          }
+        }
+      });
     }
 
     checarSessaoAdmin();
