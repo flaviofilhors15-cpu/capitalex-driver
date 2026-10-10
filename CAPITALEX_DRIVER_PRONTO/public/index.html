@@ -17,6 +17,8 @@
     <div style="font-size: 24px; font-weight: 800; color: var(--text); margin: 8px 0;">R$ 69,90</div><div style="font-size: 12px; color: var(--muted);">equivale a R$ 23,30/mês</div>
    </div>
   </div>
+  
+
   <button class="primary" id="btnStartFunnel" type="button" style="width: 100%; max-width: 400px; font-size: 16px; padding: 16px; min-height: 56px; font-weight: 700; border-radius: 12px; box-shadow: 0 8px 24px rgba(52,214,172,0.25);">Começar meu controle agora</button>
   <button id="btnExistingLogin" type="button" class="ghost" style="margin-top: 20px; font-size: 14px; width: 100%; max-width: 400px;">Já tenho uma conta</button>
   <div style="font-size: 12px; color: var(--muted); text-align: center; margin-top: 32px; padding: 0 16px; line-height: 1.6;">
@@ -27,7 +29,7 @@
  <div class="access-intro"><ol class="access-steps" aria-label="Etapas de acesso"><li id="stepLogin" aria-current="step"><span>01</span> Sua conta</li><li id="stepPlan"><span>02</span> Assinatura</li><li id="stepPanel"><span>03</span> Seu painel</li></ol><ul><li>Ganhos e despesas organizados</li><li>Metas e relatórios do seu trabalho</li><li>Seus dados no celular e no computador</li></ul><div style="background:rgba(52, 214, 172, 0.1); border:1px solid var(--primary); padding:12px; border-radius:8px; margin:24px 0 0; text-align:center;"><p style="margin:0; font-size:13px; color:var(--text);"><strong>💡 Dica: Instale o Capitalex no celular</strong><br>Toque em Compartilhar e depois em <br><strong>"Adicionar à Tela de Início"</strong> (ou Instalar Aplicativo).</p></div></div>
  <div class="access-card"><p class="eyebrow" id="accountStage">SUA CONTA</p><h2 id="gateTitle">Criar sua conta</h2><p id="gateDescription">Cadastre seu e-mail e crie uma senha para liberar seu acesso.</p>
  <div id="authTabs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 18px 0 12px;"><button type="button" id="tabRegister" style="padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; background: var(--green); color: #081320; border: none; cursor: pointer;">Criar Conta</button><button type="button" id="tabLogin" style="padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; background: #0b1a29; color: var(--muted); border: 1px solid #1f3550; cursor: pointer;">Já tenho conta</button></div>
- <form id="authForm"><label for="accountEmail">Seu e-mail<input id="accountEmail" type="email" autocomplete="email" placeholder="voce@exemplo.com" maxlength="254" required></label><label for="accountPassword">Sua senha (mínimo 6 caracteres)<input id="accountPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" minlength="6" maxlength="128" required></label><button class="primary" type="submit" id="authSubmit" style="margin-top: 8px;">Criar conta e ir para o Pix</button></form>
+ <form id="authForm"><label for="accountEmail">Seu e-mail<input id="accountEmail" type="email" autocomplete="email" placeholder="voce@exemplo.com" maxlength="254" required></label><label for="accountPassword">Sua senha (mínimo 8 caracteres)<input id="accountPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" minlength="8" maxlength="128" required></label><button class="primary" type="submit" id="authSubmit" style="margin-top: 8px;">Criar conta e ir para o Pix</button></form>
  <div id="subscriptionPanel" hidden></div>
  <p id="accountMessage" role="status" aria-live="polite"></p><p class="small" id="gateDisclaimer">Acesso liberado na hora após o pagamento.</p></div>
  </div>
