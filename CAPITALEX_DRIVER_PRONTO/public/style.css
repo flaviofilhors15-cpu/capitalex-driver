@@ -241,3 +241,8 @@ button:active {
 :root.light-theme .card.feature { background: linear-gradient(135deg, #e6f7f2, #d5f2e8); border-color: #b3e6d8; box-shadow: 0 8px 24px rgba(52,214,172,0.15); }
 :root.light-theme .card.feature .label { color: #1e7058; }
 :root.light-theme .card.feature .value { color: #0e4f3c; }
+
+/* Force hidden to override display!important (like .account-gate display:flex!important) */
+.account-gate[hidden], #landingStep[hidden], #signupStep[hidden] {
+  display: none !important;
+}
