@@ -295,5 +295,5 @@ window.DriverApp={
  clear(){saved=defaults();cloudRevision=0;cloudPrevious=null;loadedRaw=null;demo=null;dirty=false;$('#modal').close();render();}
 };
 window.addEventListener('beforeunload',e=>{if(dirty||saving){e.preventDefault();e.returnValue='';}});
-if(localStorage.getItem('capitalex_theme')==='light')document.documentElement.classList.add('light-theme');
+if(localStorage.getItem('capitalex_theme')!=='dark')document.documentElement.classList.add('light-theme');
 function navigate(){route=location.hash.slice(1);if(!paths[route])route='dashboard';render();}window.addEventListener('hashchange',navigate);navigate();
