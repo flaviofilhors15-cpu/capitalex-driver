@@ -238,11 +238,277 @@ button:active {
 :root.light-theme .access-card h2, :root.light-theme .access-intro h1 { color: #0e1e2d; }
 :root.light-theme .access-intro p { color: #4a5c6d; }
 :root.light-theme #demoBanner { background: #e8f0f8; border-color: #cdd8e4; color: #0e1e2d; }
-:root.light-theme .card.feature { background: linear-gradient(135deg, #e6f7f2, #d5f2e8); border-color: #b3e6d8; box-shadow: 0 8px 24px rgba(52,214,172,0.15); }
-:root.light-theme .card.feature .label { color: #1e7058; }
-:root.light-theme .card.feature .value { color: #0e4f3c; }
+:root.light-theme .card.feature { background: #ffffff; border-color: #34d6ac; box-shadow: 0 8px 24px rgba(52,214,172,0.15); }
+:root.light-theme .card.feature .label { color: #0d9488; }
+:root.light-theme .card.feature .value { color: #059669; }
 
 /* Force hidden to override display!important (like .account-gate display:flex!important) */
 .account-gate[hidden], #landingStep[hidden], #signupStep[hidden] {
   display: none !important;
 }
+
+/* ========================================================
+   HERO BALANCE CARD (CARD PRINCIPAL DE SALDO COM PRIVACIDADE)
+   ======================================================== */
+.hero-balance-card {
+  background: linear-gradient(150deg, #0e2436 0%, #091927 100%);
+  border: 1.5px solid #1e3f5a;
+  border-radius: 24px;
+  padding: 26px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-balance-card.is-profit {
+  border-color: rgba(52, 214, 172, 0.4);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 0 30px rgba(52, 214, 172, 0.08);
+}
+
+.hero-balance-card.is-loss {
+  border-color: rgba(248, 113, 113, 0.4);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 0 30px rgba(248, 113, 113, 0.08);
+}
+
+.hero-balance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.hero-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-badge {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+.hero-badge.profit {
+  background: rgba(34, 197, 94, 0.16);
+  color: #34d6ac;
+  border: 1px solid rgba(52, 214, 172, 0.4);
+}
+
+.hero-badge.loss {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.hero-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.btn-privacy-eye {
+  background: #142a3e;
+  border: 1px solid #22425d;
+  color: #cbd5e1;
+  border-radius: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.btn-privacy-eye:hover {
+  background: #1e3f5d;
+  color: #ffffff;
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.hero-balance-main {
+  margin-bottom: 22px;
+}
+
+.hero-balance-value {
+  font-size: clamp(34px, 5.5vw, 46px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  margin: 6px 0;
+}
+
+.hero-balance-value.positive {
+  color: #22c55e !important;
+  text-shadow: 0 0 28px rgba(34, 197, 94, 0.35);
+}
+
+.hero-balance-value.negative {
+  color: #f87171 !important;
+  text-shadow: 0 0 28px rgba(248, 113, 113, 0.35);
+}
+
+.hero-balance-desc {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+  font-weight: 500;
+}
+
+.hero-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hero-subcard {
+  background: rgba(8, 20, 32, 0.7);
+  border: 1px solid #1c3850;
+  border-radius: 16px;
+  padding: 16px 18px;
+  transition: border-color 0.2s ease;
+}
+
+.hero-subcard:hover {
+  border-color: #2f5575;
+}
+
+.hero-sub-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.hero-sub-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.hero-subcard.income .hero-sub-val {
+  color: #38bdf8;
+}
+
+.hero-subcard.expense .hero-sub-val {
+  color: #fb923c;
+}
+
+.hero-subcard.efficiency .hero-sub-val {
+  color: #34d6ac;
+}
+
+.hero-sub-note {
+  font-size: 12px;
+  color: #64748b;
+  display: block;
+}
+
+/* Light Theme Support para o Hero Card */
+:root.light-theme .hero-balance-card {
+  background: linear-gradient(150deg, #ffffff 0%, #f4f8fb 100%);
+  border-color: #cbd5e1;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+:root.light-theme .hero-balance-card.is-profit {
+  border-color: #86efac;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.06), 0 0 30px rgba(34, 197, 94, 0.12);
+}
+
+:root.light-theme .hero-balance-card.is-loss {
+  border-color: #fca5a5;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.06), 0 0 30px rgba(239, 68, 68, 0.12);
+}
+
+:root.light-theme .hero-balance-header .hero-label {
+  color: #475569;
+}
+
+:root.light-theme .hero-balance-desc {
+  color: #64748b;
+}
+
+:root.light-theme .hero-balance-value.positive {
+  color: #15803d !important;
+  text-shadow: none;
+}
+
+:root.light-theme .hero-balance-value.negative {
+  color: #dc2626 !important;
+  text-shadow: none;
+}
+
+:root.light-theme .btn-privacy-eye {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+:root.light-theme .btn-privacy-eye:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+:root.light-theme .hero-balance-grid {
+  border-top-color: #e2e8f0;
+}
+
+:root.light-theme .hero-subcard {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+:root.light-theme .hero-subcard .hero-sub-label {
+  color: #475569;
+}
+
+:root.light-theme .hero-subcard.income .hero-sub-val {
+  color: #0284c7;
+}
+
+:root.light-theme .hero-subcard.expense .hero-sub-val {
+  color: #ea580c;
+}
+
+:root.light-theme .hero-subcard.efficiency .hero-sub-val {
+  color: #059669;
+}
+
+:root.light-theme .hero-sub-note {
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .hero-balance-card {
+    padding: 20px 18px;
+    border-radius: 20px;
+    margin-bottom: 18px;
+  }
+  .hero-balance-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-top: 16px;
+  }
+  .hero-subcard {
+    padding: 12px 14px;
+  }
+}
+

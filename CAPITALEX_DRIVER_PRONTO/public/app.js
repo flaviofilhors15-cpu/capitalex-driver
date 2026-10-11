@@ -10,6 +10,9 @@ const uid=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random
 const round=n=>Math.round((n+Number.EPSILON)*100)/100;
 const defaults=()=>({version:2,profile:{name:'',vehicle:'',odometer:0,serviceAt:0,consumption:0},goals:{daily:300,monthly:6000,reserve:10000},reservePerKm:0.15,entries:[],funds:[],trash:[]});
 let saved=defaults(),demo=null,route='dashboard',period='today',formContext=null,undo=null,toastTimer,loadedRaw=null,storageIssue='',tabConflict=false,dirty=false,chartInitializers=[];
+let hideValues=localStorage.getItem('capitalex_hide_values')==='true';
+window.togglePrivacy=function(){hideValues=!hideValues;localStorage.setItem('capitalex_hide_values',hideValues);render();};
+const secretMoney=n=>hideValues?'R$ •••••':money(n);
 const ALLOWED_APPS=['Uber','99','inDrive','Particular','Outros'];
 const ALLOWED_CATEGORIES=['Combustível','Alimentação','Manutenção','Seguro','Aluguel do veículo','Parcela do veículo','Celular','Pedágio','Estacionamento','Impostos e taxas','Outros'];
 let cloudRevision=0, cloudPrevious=null, saving=false;
@@ -53,7 +56,67 @@ function totals(entries){const income=entries.filter(e=>e.type==='income'),expen
 const selected=()=>state().entries.filter(e=>inRange(e));
 function empty(title,body){return `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:48px;height:48px;color:var(--muted);margin-bottom:16px;opacity:0.3"><path d="M21 8v13H3V8M1 3h22v5H1z M10 12h4"/></svg><strong>${title}</strong><p>${body}</p></div>`;}
 function card(label,value,note,feature=false){return `<div class="card ${feature?'feature':''}"><div class="label">${label}</div><div class="value">${value}</div><small>${note}</small></div>`;}
-function cards(t){return `<div class="cards">${card('Ganhos recebidos',money(t.income),`${number(t.count)} corridas registradas`)}${card('Despesas pagas',money(t.expense),'Todos os gastos lançados')}${card('Saldo do período',money(t.net),'Ganhos menos despesas pagas',true)}${card('Rendimento Líquido',t.km?money(t.net/t.km)+'/km':'—',t.hours?money(t.net/t.hours)+'/hora • '+number(t.km)+' km totais':'Registre KM e Horas na corrida')}</div>`;}
+function cards(t){
+  const isPositive = t.net >= 0;
+  const badgeClass = isPositive ? 'profit' : 'loss';
+  const badgeText = isPositive ? '▲ Lucro Líquido' : '▼ Saldo Negativo';
+  const valFormatted = secretMoney(t.net);
+  const incFormatted = secretMoney(t.income);
+  const expFormatted = secretMoney(t.expense);
+  const rendFormatted = t.km ? (hideValues ? '•••••' : money(t.net/t.km)+'/km') : '—';
+  const rendSub = t.hours ? (hideValues ? '•••••' : money(t.net/t.hours)+'/h') : (number(t.km)+' km rodados');
+
+  return `
+    <div class="hero-balance-card ${isPositive?'is-profit':'is-loss'}">
+      <div class="hero-balance-header">
+        <div class="hero-header-left">
+          <span class="hero-badge ${badgeClass}">${badgeText}</span>
+          <span class="hero-label">SALDO DO PERÍODO</span>
+        </div>
+        <button type="button" class="btn-privacy-eye" onclick="window.togglePrivacy()" title="${hideValues?'Mostrar valores':'Ocultar valores (Modo Privacidade)'}" aria-label="Alternar privacidade">
+          ${hideValues ? `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+            <span>Oculto</span>
+          ` : `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>Privacidade</span>
+          `}
+        </button>
+      </div>
+
+      <div class="hero-balance-main">
+        <div class="hero-balance-value ${isPositive?'positive':'negative'}">
+          ${valFormatted}
+        </div>
+        <p class="hero-balance-desc">Ganhos menos despesas pagas</p>
+      </div>
+
+      <div class="hero-balance-grid">
+        <div class="hero-subcard income">
+          <div class="hero-sub-label">🟢 Ganhos Recebidos</div>
+          <div class="hero-sub-val">${incFormatted}</div>
+          <small class="hero-sub-note">${number(t.count)} corridas registradas</small>
+        </div>
+        <div class="hero-subcard expense">
+          <div class="hero-sub-label">🔴 Despesas Pagas</div>
+          <div class="hero-sub-val">${expFormatted}</div>
+          <small class="hero-sub-note">Todos os gastos lançados</small>
+        </div>
+        <div class="hero-subcard efficiency">
+          <div class="hero-sub-label">⚡ Rendimento Líquido</div>
+          <div class="hero-sub-val">${rendFormatted}</div>
+          <small class="hero-sub-note">${rendSub}</small>
+        </div>
+      </div>
+    </div>
+  `;
+}
 function table(entries){if(!entries.length)return empty('Seu histórico começa aqui','Registre um ganho ou uma despesa para acompanhar a evolução.');return `<div class="table-wrap"><table><thead><tr><th>Data</th><th>Lançamento</th><th>Detalhes</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...entries].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<tr><td>${displayDate(e.date)}</td><td>${esc(e.type==='income'?(e.mode==='daily'?'Fechamento do dia':e.app):e.category)}<br><small>${esc(e.description)}</small></td><td>${e.type==='income'?`${number(e.count)} corridas · ${number(e.km)} km<br><small>${number(e.hours)} h registradas</small>`:'<span class="tag">Despesa</span>'}</td><td class="${e.type==='income'?'positive':'negative'}">${e.type==='income'?'+':'−'} ${money(e.amount)}</td><td><button data-edit="${esc(e.id)}" aria-label="Editar lançamento de ${displayDate(e.date)}">Editar</button> <button data-delete="${esc(e.id)}" class="ghost danger" aria-label="Excluir lançamento de ${displayDate(e.date)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`;}
 function trendData(report=false){
  let start,end;const b=bounds();if(!report){end=b[1]==='9999-12-31'?dateKey():b[1];const d=new Date(end+'T12:00:00');d.setDate(d.getDate()-6);start=dateKey(d);}else{const dates=selected().map(e=>e.date).sort();start=b[0]==='0000-01-01'?(dates[0]||dateKey()):b[0];end=b[1]==='9999-12-31'?(dates.at(-1)||dateKey()):b[1];}
