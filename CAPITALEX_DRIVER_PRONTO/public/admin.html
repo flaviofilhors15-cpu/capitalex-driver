@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Capitalex Driver — Admin QG</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2334d6ac'/%3E%3Ctext x='8' y='42' font-size='28' font-family='Arial' font-weight='bold' fill='%23081320'%3ECD%3C/text%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -165,6 +165,7 @@
           <button class="btn btn-30" onclick="liberarAcesso(30)">+ 30 Dias (Mensal)</button>
           <button class="btn btn-90" onclick="liberarAcesso(90)">+ 90 Dias (Trimestral)</button>
           <button class="btn btn-block" onclick="bloquearAcesso()">Bloquear</button>
+          <button class="btn" style="background: #374151; color: #f3f4f6;" onclick="ocultarAcessoTopo()">👁️ Ocultar</button>
         </div>
         <div id="statusMsg" class="status-msg"></div>
       </div>
@@ -185,6 +186,7 @@
           <button class="filter-btn" data-filter="active" onclick="setFiltro('active', this)">Ativos</button>
           <button class="filter-btn" data-filter="expiring" onclick="setFiltro('expiring', this)">Vencendo</button>
           <button class="filter-btn" data-filter="expired" onclick="setFiltro('expired', this)">Inativos</button>
+          <button class="filter-btn" data-filter="hidden" onclick="setFiltro('hidden', this)" id="btnFiltroHidden">Ocultos (0)</button>
         </div>
 
         <div class="table-container">
@@ -224,8 +226,9 @@
               <h2>Desempenho de Vendas</h2>
               <p>O gráfico sobe automaticamente toda vez que você libera +30 ou +90 dias.</p>
             </div>
+            <button onclick="adicionarVendaManual()" class="btn btn-30" style="font-size: 0.85rem;">+ Registrar Venda Manual</button>
           </div>
-          <div style="height: 300px; width: 100%;">
+          <div style="height: 300px; width: 100%; position: relative;">
             <canvas id="salesChart"></canvas>
           </div>
         </div>
@@ -303,6 +306,9 @@
       document.getElementById('tabSales').classList.toggle('active', tab === 'sales');
       document.getElementById('tabContentGeneral').style.display = tab === 'general' ? 'block' : 'none';
       document.getElementById('tabContentSales').style.display = tab === 'sales' ? 'block' : 'none';
+      if (tab === 'sales') {
+        setTimeout(renderChart, 50); // Dá tempo do display: block aplicar antes de renderizar
+      }
     }
 
     // Actions
@@ -317,6 +323,8 @@
         msg.textContent = '✅ ' + res.message; msg.style.color = 'var(--green)';
         document.getElementById('targetEmail').value = '';
         
+        carregarUsuarios();
+
         // Adiciona a venda ao lucro
         const price = dias === 30 ? 25.95 : 69.90;
         addSale(price, dias);
@@ -326,7 +334,6 @@
         if (hidden.includes(email.toLowerCase())) {
           localStorage.setItem('admin_hidden_users', JSON.stringify(hidden.filter(h => h !== email.toLowerCase())));
         }
-        carregarUsuarios();
       } catch (err) {
         msg.textContent = '❌ ' + err.message; msg.style.color = 'var(--red)';
       }
@@ -346,15 +353,29 @@
       }
     }
 
+    function ocultarAcessoTopo() {
+      const email = document.getElementById('targetEmail').value.trim().toLowerCase();
+      if (!email) return alert('Digite o e-mail que deseja ocultar.');
+      setHiddenUser(email);
+      document.getElementById('targetEmail').value = '';
+      const msg = document.getElementById('statusMsg');
+      if (msg) {
+        msg.textContent = '👁️ Motorista ' + email + ' ocultado da lista principal.';
+        msg.style.color = 'var(--muted)';
+      }
+      carregarUsuarios();
+    }
+
     async function ocultarUsuario(email) {
-      if (!confirm(`Arquivar e ocultar ${email} do painel geral? Você não verá mais esse e-mail a menos que ative novamente.`)) return;
-      
-      // Oculta visualmente e também cancela a assinatura por segurança
-      try {
-        await api('admin-block', 'POST', { email });
-      } catch(e) {} // Ignora se já estiver inativo
-      
-      setHiddenUser(email.toLowerCase());
+      if (!confirm(`Ocultar ${email} da lista principal? Você pode vê-lo e restaurá-lo na aba "Ocultos".`)) return;
+      setHiddenUser(email.trim().toLowerCase());
+      carregarUsuarios();
+    }
+
+    function restaurarUsuario(email) {
+      const hidden = getHiddenUsers();
+      const updated = hidden.filter(h => h !== email.trim().toLowerCase());
+      localStorage.setItem('admin_hidden_users', JSON.stringify(updated));
       carregarUsuarios();
     }
 
@@ -375,7 +396,8 @@
       let ativos = 0; let vencendo = 0;
       const hidden = getHiddenUsers();
       todosUsuarios.forEach(u => {
-        if (!hidden.includes(u.email.toLowerCase()) && u.is_active) {
+        const emailNorm = (u.email || '').trim().toLowerCase();
+        if (!hidden.includes(emailNorm) && u.is_active) {
           ativos++;
           if (u.days_left <= 3) vencendo++;
         }
@@ -397,12 +419,26 @@
       const termo = document.getElementById('filtroEmail').value.toLowerCase().trim();
       const hidden = getHiddenUsers();
       
-      // Remove os ocultos da lista base
-      let filtrados = todosUsuarios.filter(u => u.email.toLowerCase().includes(termo) && !hidden.includes(u.email.toLowerCase()));
-      
-      if (currentFilter === 'active') filtrados = filtrados.filter(u => u.is_active && u.days_left > 3);
-      else if (currentFilter === 'expiring') filtrados = filtrados.filter(u => u.is_active && u.days_left <= 3);
-      else if (currentFilter === 'expired') filtrados = filtrados.filter(u => !u.is_active);
+      const btnOcultos = document.getElementById('btnFiltroHidden');
+      if (btnOcultos) btnOcultos.textContent = `Ocultos (${hidden.length})`;
+
+      let filtrados = [];
+      if (currentFilter === 'hidden') {
+        // Exibe apenas quem foi ocultado
+        filtrados = todosUsuarios.filter(u => {
+          const e = (u.email || '').trim().toLowerCase();
+          return hidden.includes(e) && e.includes(termo);
+        });
+      } else {
+        // Exibe normais removendo os ocultos
+        filtrados = todosUsuarios.filter(u => {
+          const e = (u.email || '').trim().toLowerCase();
+          return !hidden.includes(e) && e.includes(termo);
+        });
+        if (currentFilter === 'active') filtrados = filtrados.filter(u => u.is_active && u.days_left > 3);
+        else if (currentFilter === 'expiring') filtrados = filtrados.filter(u => u.is_active && u.days_left <= 3);
+        else if (currentFilter === 'expired') filtrados = filtrados.filter(u => !u.is_active);
+      }
       
       renderizarTabela(filtrados);
     }
@@ -425,7 +461,7 @@
     function renderizarTabela(lista) {
       const tbody = document.getElementById('usersList');
       if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum motorista encontrado nesse filtro.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state">${currentFilter === 'hidden' ? 'Nenhum motorista oculto.' : 'Nenhum motorista encontrado nesse filtro.'}</td></tr>`;
         return;
       }
 
@@ -438,6 +474,12 @@
             : `<span class="badge badge-active">✔ Ativo (${u.days_left}d)</span>`;
           expira = new Date(u.expires_at).toLocaleDateString('pt-BR');
         }
+
+        const isHiddenView = currentFilter === 'hidden';
+        const botaoAcao = isHiddenView
+          ? `<button onclick="restaurarUsuario('${u.email}')" class="btn btn-30" style="background: #3b82f6; color: #fff;" title="Reexibir na lista principal">Restaurar</button>`
+          : `<button onclick="ocultarUsuario('${u.email}')" class="btn btn-block" title="Ocultar da lista">Ocultar</button>`;
+
         return `
           <tr>
             <td>
@@ -453,7 +495,7 @@
             <td>
               <div class="actions-cell">
                 <button onclick="selecionarUsuario('${u.email}')" class="btn btn-30" title="Renovar / Editar">Renovar</button>
-                <button onclick="ocultarUsuario('${u.email}')" class="btn btn-block" title="Ocultar do Painel">Ocultar</button>
+                ${botaoAcao}
               </div>
             </td>
           </tr>
@@ -461,82 +503,191 @@
       }).join('');
     }
 
+    function adicionarVendaManual() {
+      const val = prompt('Digite o valor da venda em R$ (ex: 25.95 ou 69.90):', '25.95');
+      if (!val) return;
+      const num = parseFloat(val.replace(',', '.'));
+      if (isNaN(num) || num <= 0) return alert('Valor inválido.');
+      addSale(num, num >= 50 ? 90 : 30);
+      alert('✅ Venda de R$ ' + num.toFixed(2).replace('.', ',') + ' registrada!');
+    }
+
     // Chart logic
     function renderChart() {
-      if(!window.Chart) return setTimeout(renderChart, 200);
-      const sales = getSales();
-      let total = 0;
-      let monthTotal = 0;
-      const today = new Date();
-      const currentMonth = today.toISOString().slice(0, 7);
-      
-      const byDay = {};
-      
-      sales.forEach(s => {
-        total += s.value;
-        const sMonth = s.date.slice(0, 7);
-        if (sMonth === currentMonth) monthTotal += s.value;
+      try {
+        let sales = getSales();
         
-        const day = s.date.slice(0, 10);
-        byDay[day] = (byDay[day] || 0) + s.value;
-      });
-
-      document.getElementById('metricTotalSales').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      document.getElementById('metricMonthSales').textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-      // Build array of last 14 days
-      const labels = [];
-      const data = [];
-      for(let i=13; i>=0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayKey = d.toISOString().slice(0, 10);
-        labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
-        data.push(byDay[dayKey] || 0);
-      }
-
-      if (salesChart) salesChart.destroy();
-      const ctx = document.getElementById('salesChart').getContext('2d');
-      Chart.defaults.color = '#849fb8';
-      Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-      
-      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-      gradient.addColorStop(0, 'rgba(52, 214, 172, 0.5)');
-      gradient.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
-      
-      salesChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Vendas diárias (R$)',
-            data,
-            backgroundColor: gradient,
-            borderColor: '#34d6ac',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#081320',
-            pointBorderColor: '#34d6ac',
-            pointBorderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: { 
-            legend: { display: false }, 
-            tooltip: { cornerRadius: 8, padding: 12, backgroundColor: '#081320', titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }, displayColors: false } 
-          },
-          scales: {
-            y: { beginAtZero: true, grid: { color: '#1f3550' }, border: { display: false }, ticks: { callback: v => 'R$ ' + v } },
-            x: { grid: { display: false }, border: { display: false } }
+        // Se ainda não há vendas registradas, calcula com base nos assinantes ativos atuais
+        if (sales.length === 0 && todosUsuarios.length > 0) {
+          const ativos = todosUsuarios.filter(u => u.is_active);
+          if (ativos.length > 0) {
+            sales = ativos.map(u => ({
+              date: u.expires_at || new Date().toISOString(),
+              value: u.days_left > 40 ? 69.90 : 25.95,
+              plan: u.days_left > 40 ? 90 : 30
+            }));
+            localStorage.setItem('admin_sales', JSON.stringify(sales));
           }
         }
-      });
+
+        let total = 0;
+        let monthTotal = 0;
+        const today = new Date();
+        const currentMonth = today.toISOString().slice(0, 7);
+        
+        const byDay = {};
+        
+        sales.forEach(s => {
+          total += s.value;
+          const sMonth = s.date.slice(0, 7);
+          if (sMonth === currentMonth) monthTotal += s.value;
+          
+          const day = s.date.slice(0, 10);
+          byDay[day] = (byDay[day] || 0) + s.value;
+        });
+
+        document.getElementById('metricTotalSales').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('metricMonthSales').textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const chartContainer = document.getElementById('tabContentSales');
+        if (chartContainer.style.display === 'none') {
+           return;
+        }
+
+        // Build array of last 14 days
+        const labels = [];
+        const data = [];
+        for(let i=13; i>=0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dayKey = d.toISOString().slice(0, 10);
+          labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+          data.push(byDay[dayKey] || 0);
+        }
+
+        const canvas = document.getElementById('salesChart');
+        if (!canvas) return;
+
+        // Se Chart.js estiver disponível, usa Chart.js
+        if (window.Chart) {
+          if (salesChart) salesChart.destroy();
+          const ctx = canvas.getContext('2d');
+          Chart.defaults.color = '#849fb8';
+          Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+          
+          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+          gradient.addColorStop(0, 'rgba(52, 214, 172, 0.45)');
+          gradient.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
+          
+          salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Vendas diárias (R$)',
+                data,
+                backgroundColor: gradient,
+                borderColor: '#34d6ac',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: '#081320',
+                pointBorderColor: '#34d6ac',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: { 
+                legend: { display: false }, 
+                tooltip: { cornerRadius: 8, padding: 12, backgroundColor: '#081320', titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }, displayColors: false } 
+              },
+              scales: {
+                y: { beginAtZero: true, grid: { color: '#1f3550' }, border: { display: false }, ticks: { callback: v => 'R$ ' + v } },
+                x: { grid: { display: false }, border: { display: false } }
+              }
+            }
+          });
+        } else {
+          // Fallback nativo Canvas caso Chart.js ainda esteja carregando
+          const ctx = canvas.getContext('2d');
+          const w = canvas.parentElement.clientWidth || 600;
+          const h = 300;
+          canvas.width = w;
+          canvas.height = h;
+
+          ctx.clearRect(0, 0, w, h);
+          const maxVal = Math.max(...data, 100);
+          const padL = 60, padR = 20, padT = 30, padB = 40;
+          const plotW = w - padL - padR;
+          const plotH = h - padT - padB;
+
+          // Grid lines
+          ctx.strokeStyle = '#1f3550';
+          ctx.lineWidth = 1;
+          for (let step = 0; step <= 4; step++) {
+            const y = padT + (plotH / 4) * step;
+            ctx.beginPath();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(w - padR, y);
+            ctx.stroke();
+
+            const v = Math.round(maxVal - (maxVal / 4) * step);
+            ctx.fillStyle = '#849fb8';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('R$ ' + v, padL - 10, y + 4);
+          }
+
+          // Points
+          const pts = data.map((val, idx) => {
+            const x = padL + (idx / (data.length - 1)) * plotW;
+            const y = padT + plotH - (val / maxVal) * plotH;
+            return { x, y, val, label: labels[idx] };
+          });
+
+          // Draw gradient area
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, padT + plotH);
+          pts.forEach(p => ctx.lineTo(p.x, p.y));
+          ctx.lineTo(pts[pts.length - 1].x, padT + plotH);
+          ctx.closePath();
+          const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+          grad.addColorStop(0, 'rgba(52, 214, 172, 0.35)');
+          grad.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Draw line
+          ctx.beginPath();
+          ctx.strokeStyle = '#34d6ac';
+          ctx.lineWidth = 3;
+          pts.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+          ctx.stroke();
+
+          // Draw dots & labels
+          pts.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#081320';
+            ctx.fill();
+            ctx.strokeStyle = '#34d6ac';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#849fb8';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(p.label, p.x, h - 12);
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao renderizar gráfico:', err);
+      }
     }
 
     checarSessaoAdmin();
