@@ -1,10 +1,11 @@
-const CACHE_NAME = 'capitalex-v4';
+const CACHE_NAME = 'capitalex-v5';
 const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
   '/account.js',
+  '/notifications.js',
   '/manifest.json'
 ];
 
@@ -47,6 +48,42 @@ self.addEventListener('fetch', e => {
       
       // Para arquivos estáticos (CSS, JS, Imagens), usa o cache primeiro para ser super rápido.
       return cached || fetchPromise;
+    })
+  );
+});
+
+// Ao clicar na notificação, abre ou foca no app
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if (client.url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
+// Suporte para Web Push do servidor
+self.addEventListener('push', e => {
+  let data = { title: 'Capitalex Driver', body: 'Lembrete de corridas!' };
+  try {
+    if (e.data) data = e.data.json();
+  } catch(err) {
+    if (e.data) data.body = e.data.text();
+  }
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/assets/icon-192.png',
+      badge: '/assets/icon-192.png',
+      vibrate: [200, 100, 200],
+      tag: 'capitalex-push'
     })
   );
 });
