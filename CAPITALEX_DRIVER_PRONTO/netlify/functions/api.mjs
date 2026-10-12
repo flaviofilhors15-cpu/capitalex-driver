@@ -300,6 +300,22 @@ export default async function handler(req, context = {}) {
         });
 
         result = { ok: true, message: `O motorista ${targetEmail} foi bloqueado com sucesso.` };
+      } else if (action === 'admin-delete') {
+        if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
+        const p = await body(req, 1024);
+        const targetEmail = (p.email || '').trim().toLowerCase();
+        const targetUserId = (p.user_id || '').trim();
+        if (!targetEmail && !targetUserId) fail(400, 'Informe o e-mail ou ID do motorista.');
+
+        if (targetUserId) {
+          await db(e, `driver_accounts?user_id=eq.${encodeURIComponent(targetUserId)}`, 'DELETE').catch(() => {});
+          try { await authAdmin(e, 'users/' + targetUserId, undefined, 'DELETE'); } catch {}
+        }
+        if (targetEmail) {
+          await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}`, 'DELETE').catch(() => {});
+        }
+
+        result = { ok: true, message: `O motorista ${targetEmail || targetUserId} foi excluído permanentemente.` };
       } else if (action === 'admin-referrals') {
         if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
         const allAccounts = await db(e, 'driver_accounts?select=user_id,customer_email,pix_key,pix_key_type,referral_balance,referral_total_earned,referred_by,subscription_status,subscription_expires_at&order=referral_balance.desc').catch(() => []);

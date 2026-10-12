@@ -242,12 +242,39 @@
           <div class="panel-header">
             <div>
               <h2>Desempenho de Vendas</h2>
-              <p>O gráfico sobe automaticamente toda vez que você libera +30 ou +90 dias.</p>
+              <p>O gráfico sobe automaticamente ao liberar acessos e deduz valores de contas ocultas ou retiradas manuais.</p>
             </div>
-            <button onclick="adicionarVendaManual()" class="btn btn-30" style="font-size: 0.85rem;">+ Registrar Venda Manual</button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onclick="adicionarVendaManual()" class="btn btn-30" style="font-size: 0.85rem;">+ Adicionar Venda</button>
+              <button onclick="registrarRetiradaManual()" class="btn btn-block" style="font-size: 0.85rem; background: #dc2626; color: #fff;">− Registrar Retirada</button>
+              <button onclick="zerarVendas()" class="btn" style="font-size: 0.85rem; background: #374151; color: #d1d5db;">🗑️ Limpar Vendas</button>
+            </div>
           </div>
           <div style="height: 300px; width: 100%; position: relative;">
             <canvas id="salesChart"></canvas>
+          </div>
+
+          <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text);">Histórico de Lançamentos de Vendas & Retiradas</h3>
+              <small style="color: var(--muted);">Lançamentos de contas ocultas ficam desativados automaticamente</small>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Descrição / Motorista</th>
+                    <th>Valor</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="salesHistoryList">
+                  <tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -383,11 +410,47 @@
       }
     }
 
-    function addSale(value, plan) {
+    function addSale(value, plan = 30, email = '', type = 'venda', note = '') {
       const sales = getSales();
-      sales.push({ date: new Date().toISOString(), value: Number(value) || 0, plan });
+      const id = Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+      sales.push({
+        id,
+        date: new Date().toISOString(),
+        value: Number(value) || 0,
+        plan,
+        email: (email || '').trim().toLowerCase(),
+        type: type || (value < 0 ? 'retirada' : 'venda'),
+        note: note || (type === 'retirada' ? 'Retirada Manual' : (plan === 90 ? 'Trimestral (90d)' : 'Mensal (30d)'))
+      });
+      localStorage.setItem('admin_sales', JSON.stringify(sales));
+      localStorage.setItem('admin_sales_initialized', 'true');
+      renderChart();
+    }
+
+    function registrarRetiradaManual() {
+      const val = prompt('Digite o valor da retirada / dedução em R$ (ex: 25.95 ou 50.00):', '25.95');
+      if (!val) return;
+      const num = parseFloat(val.replace(',', '.'));
+      if (isNaN(num) || num <= 0) return alert('Valor inválido.');
+      const note = prompt('Motivo / observação da retirada (opcional):', 'Retirada manual') || 'Retirada manual';
+      addSale(-num, 0, '', 'retirada', note);
+      alert('✅ Retirada de R$ ' + num.toFixed(2).replace('.', ',') + ' deduzida com sucesso!');
+    }
+
+    function excluirLancamentoVenda(id) {
+      if (!confirm('Deseja excluir este lançamento do gráfico e do histórico?')) return;
+      let sales = getSales();
+      sales = sales.filter(s => s.id !== id);
       localStorage.setItem('admin_sales', JSON.stringify(sales));
       renderChart();
+    }
+
+    function zerarVendas() {
+      if (!confirm('ATENÇÃO: Deseja apagar TODO o histórico de vendas e zerar o gráfico?')) return;
+      localStorage.setItem('admin_sales', JSON.stringify([]));
+      localStorage.setItem('admin_sales_initialized', 'true');
+      renderChart();
+      alert('Histórico de vendas limpo com sucesso.');
     }
 
     async function api(rota, metodo = 'GET', body = null) {
@@ -472,15 +535,9 @@
         
         carregarUsuarios();
 
-        // Adiciona a venda ao lucro
+        // Adiciona a venda ao lucro com o e-mail do motorista
         const price = dias === 30 ? 25.95 : 69.90;
-        addSale(price, dias);
-
-        // Se estava arquivado/oculto, volta a aparecer automaticamente (remove do array)
-        const hidden = getHiddenUsers();
-        if (hidden.includes(email.toLowerCase())) {
-          localStorage.setItem('admin_hidden_users', JSON.stringify(hidden.filter(h => h !== email.toLowerCase())));
-        }
+        addSale(price, dias, email, 'venda', dias === 90 ? 'Trimestral (+90d)' : 'Mensal (+30d)');
       } catch (err) {
         msg.textContent = '❌ ' + err.message; msg.style.color = 'var(--red)';
       } finally {
@@ -513,19 +570,43 @@
         msg.style.color = 'var(--muted)';
       }
       carregarUsuarios();
+      renderChart();
     }
 
     async function ocultarUsuario(email, userId) {
-      if (!confirm(`Ocultar ${email} da lista principal? Você pode vê-lo e restaurá-lo na aba "Ocultos".`)) return;
+      if (!confirm(`Ocultar ${email} da lista principal e deduzir os valores dele do gráfico de vendas? Você pode restaurá-lo a qualquer momento na aba "Ocultos".`)) return;
       if (email && email !== 'Não informado') setHiddenUser(email);
       if (userId) setHiddenUser(userId);
       carregarUsuarios();
+      renderChart();
     }
 
     function restaurarUsuario(email, userId) {
       if (email) removeHiddenUser(email);
       if (userId) removeHiddenUser(userId);
       carregarUsuarios();
+      renderChart();
+    }
+
+    async function excluirUsuarioDefinitivo(email, userId) {
+      const idShow = email && email !== 'Não informado' ? email : userId;
+      if (!confirm(`⚠️ ATENÇÃO: Deseja realmente EXCLUIR DEFINITIVAMENTE o motorista "${idShow}"?\n\nEssa ação apagará os dados do banco de dados (Supabase) e ele nunca mais voltará.`)) return;
+
+      try {
+        await api('admin-delete', 'POST', { email: email !== 'Não informado' ? email : '', user_id: userId || '' });
+        if (email) {
+          removeHiddenUser(email);
+          let sales = getSales();
+          sales = sales.filter(s => (s.email || '').toLowerCase() !== email.toLowerCase());
+          localStorage.setItem('admin_sales', JSON.stringify(sales));
+        }
+        if (userId) removeHiddenUser(userId);
+        alert('✅ Motorista excluído do banco com sucesso!');
+        carregarUsuarios();
+        renderChart();
+      } catch (err) {
+        alert('❌ Erro ao excluir: ' + err.message);
+      }
     }
 
     // Data Management
@@ -624,8 +705,10 @@
 
         const isHiddenView = currentFilter === 'hidden';
         const botaoAcao = isHiddenView
-          ? `<button onclick="restaurarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-30" style="background: #3b82f6; color: #fff;" title="Reexibir na lista principal">Restaurar</button>`
-          : `<button onclick="ocultarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-block" title="Ocultar da lista">Ocultar</button>`;
+          ? `<button onclick="restaurarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-30" style="background: #3b82f6; color: #fff; padding: 7px 11px; font-size: 0.8rem;" title="Reexibir na lista principal">Restaurar</button>
+             <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-block" style="background: #7f1d1d; color: #fca5a5; padding: 7px 11px; font-size: 0.8rem;" title="Excluir definitivamente do banco">Excluir</button>`
+          : `<button onclick="ocultarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-block" style="background: #374151; color: #d1d5db; padding: 7px 11px; font-size: 0.8rem;" title="Ocultar da lista e do gráfico">Ocultar</button>
+             <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-block" style="background: #7f1d1d; color: #fca5a5; padding: 7px 11px; font-size: 0.8rem;" title="Excluir definitivamente do banco">Excluir</button>`;
 
         return `
           <tr>
@@ -640,8 +723,8 @@
             <td>${badge}</td>
             <td><strong>${expira}</strong></td>
             <td>
-              <div class="actions-cell">
-                <button onclick="selecionarUsuario('${u.email}')" class="btn btn-30" title="Renovar / Editar">Renovar</button>
+              <div class="actions-cell" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button onclick="selecionarUsuario('${u.email}')" class="btn btn-30" style="padding: 7px 11px; font-size: 0.8rem;" title="Renovar / Editar">Renovar</button>
                 ${botaoAcao}
               </div>
             </td>
@@ -663,10 +746,12 @@
     function renderChart() {
       try {
         let sales = getSales();
+        const hiddenUsers = getHiddenUsers();
         
-        // Se ainda não há vendas registradas, calcula com base nos assinantes ativos atuais
-        if (sales.length === 0 && todosUsuarios.length > 0) {
-          const ativos = todosUsuarios.filter(u => u.is_active);
+        // Se ainda não há vendas registradas, calcula com base nos assinantes ativos atuais (apenas na 1ª vez)
+        if (sales.length === 0 && todosUsuarios.length > 0 && !localStorage.getItem('admin_sales_initialized')) {
+          localStorage.setItem('admin_sales_initialized', 'true');
+          const ativos = todosUsuarios.filter(u => u.is_active && !isUserHidden(u));
           if (ativos.length > 0) {
             sales = ativos.map(u => {
               const planDays = u.days_left > 40 ? 90 : 30;
@@ -677,14 +762,24 @@
                 if (saleDate > new Date()) saleDate = new Date();
               }
               return {
+                id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
                 date: saleDate.toISOString(),
                 value: planDays === 90 ? 69.90 : 25.95,
-                plan: planDays
+                plan: planDays,
+                email: (u.email || '').toLowerCase(),
+                type: 'venda',
+                note: planDays === 90 ? 'Trimestral (90d)' : 'Mensal (30d)'
               };
             });
             localStorage.setItem('admin_sales', JSON.stringify(sales));
           }
         }
+
+        // 🌟 FILTRO DE CONTAS OCULTAS: se o e-mail do motorista está ocultado, os valores DELE SÃO RETIRADOS DO GRÁFICO!
+        const visibleSales = sales.filter(s => {
+          if (!s.email) return true;
+          return !hiddenUsers.includes(s.email.toLowerCase());
+        });
 
         let total = 0;
         let monthTotal = 0;
@@ -692,7 +787,7 @@
         const currentMonth = todayStr.slice(0, 7);
         const byDay = {};
         
-        sales.forEach(s => {
+        visibleSales.forEach(s => {
           const val = Number(s.value) || 0;
           total += val;
           const dayKey = getLocalDateKey(s.date);
@@ -702,6 +797,8 @@
 
         document.getElementById('metricTotalSales').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         document.getElementById('metricMonthSales').textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        renderSalesHistory(sales);
 
         const chartContainer = document.getElementById('tabContentSales');
         if (chartContainer && chartContainer.style.display === 'none') {
@@ -845,6 +942,45 @@
     }
 
     const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    function renderSalesHistory(sales) {
+      const tbody = document.getElementById('salesHistoryList');
+      if (!tbody) return;
+      if (!sales || sales.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum lançamento registrado no momento.</td></tr>';
+        return;
+      }
+      const hiddenUsers = getHiddenUsers();
+      tbody.innerHTML = [...sales].reverse().map(s => {
+        const val = Number(s.value) || 0;
+        const isRetirada = s.type === 'retirada' || val < 0;
+        const isHidden = s.email && hiddenUsers.includes(s.email.toLowerCase());
+        const displayVal = Math.abs(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const dataStr = new Date(s.date).toLocaleDateString('pt-BR') + ' ' + new Date(s.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const desc = s.note || (s.email ? s.email : (isRetirada ? 'Retirada Manual' : 'Venda Manual'));
+        return `
+          <tr style="${isHidden ? 'opacity: 0.45; background: rgba(0,0,0,0.25);' : ''}">
+            <td style="font-size: 0.85rem; color: var(--muted);">${dataStr}</td>
+            <td>
+              <span class="badge ${isRetirada ? 'badge-expired' : 'badge-active'}" style="font-size: 0.75rem;">
+                ${isRetirada ? '− Retirada' : '+ Venda'}
+              </span>
+              ${isHidden ? '<span class="badge" style="background:#374151;color:#9ca3af;margin-left:4px;font-size:0.7rem;">(Oculto)</span>' : ''}
+            </td>
+            <td>
+              <strong>${esc(desc)}</strong>
+              ${s.email && s.note ? `<br><small style="color:var(--muted)">${esc(s.email)}</small>` : ''}
+            </td>
+            <td style="font-weight: 800; font-size: 1rem; color: ${isRetirada ? 'var(--red)' : 'var(--green)'};">
+              ${isRetirada ? '− ' : '+ '} ${displayVal}
+            </td>
+            <td>
+              <button onclick="excluirLancamentoVenda('${s.id}')" class="btn btn-block" style="padding: 5px 9px; font-size: 0.78rem;" title="Excluir este lançamento do gráfico">🗑️ Excluir</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
 
     // Indicações e Comissões
     async function carregarIndicações() {

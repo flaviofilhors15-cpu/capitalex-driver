@@ -191,6 +191,12 @@ async function handleApiMock(req, res, action) {
     return json({ ok: true, message: `O motorista ${email} foi bloqueado com sucesso.` });
   }
 
+  if (action === 'admin-delete') {
+    const email = (body.email || '').trim().toLowerCase();
+    mockDb.users = mockDb.users.filter(u => u.email !== email);
+    return json({ ok: true, message: `O motorista ${email} foi excluído permanentemente.` });
+  }
+
   return json({ error: 'Rota não encontrada.' }, 404);
 }
 
