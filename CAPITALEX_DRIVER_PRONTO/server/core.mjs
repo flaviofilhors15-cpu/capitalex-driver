@@ -144,16 +144,23 @@ export async function user(req, e) {
   return d;
 }
 
-export async function account(e, id, email = '') {
+export async function account(e, id, email = '', referredBy = null) {
   await db(e, 'driver_accounts?on_conflict=user_id', 'POST', {
     user_id: id,
-    ...(email ? { customer_email: email } : {})
+    ...(email ? { customer_email: email } : {}),
+    ...(referredBy ? { referred_by: referredBy } : {})
   }, 'resolution=ignore-duplicates,return=minimal');
 
   if (email) {
     await db(e, 'driver_accounts?user_id=eq.' + encodeURIComponent(id) + '&customer_email=is.null', 'PATCH', {
       customer_email: email
     });
+  }
+
+  if (referredBy) {
+    await db(e, 'driver_accounts?user_id=eq.' + encodeURIComponent(id) + '&referred_by=is.null', 'PATCH', {
+      referred_by: referredBy
+    }).catch(() => {});
   }
 
   const rows = await db(e, 'driver_accounts?user_id=eq.' + encodeURIComponent(id) + '&select=*');

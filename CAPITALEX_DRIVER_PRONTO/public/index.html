@@ -34,6 +34,8 @@
  <p id="accountMessage" role="status" aria-live="polite"></p><p class="small" id="gateDisclaimer">Acesso liberado na hora após o pagamento.</p></div>
  </div>
  <script>
+  const urlRef = new URLSearchParams(window.location.search).get('ref');
+  if (urlRef) localStorage.setItem('capitalex_ref', urlRef.trim().toLowerCase());
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW falhou:', err));

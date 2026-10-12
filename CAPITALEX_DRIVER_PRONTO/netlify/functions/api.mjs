@@ -17,7 +17,7 @@ export default async function handler(req, context = {}) {
 
   try {
     const e = env();
-    const action = new URL(req.url).pathname.split('/').pop();
+    const action = new URL(req.url).pathname.replace(/\/+$/, '').split('/').pop();
 
     if (!['GET', 'POST', 'PUT'].includes(req.method)) fail(405, 'Método não permitido.');
     if (req.method !== 'GET' && !isValidOrigin(req, e)) fail(403, 'Origem não autorizada.');
@@ -32,9 +32,12 @@ export default async function handler(req, context = {}) {
       session: 'GET',
       data: ['GET', 'PUT'],
       export: 'GET',
+      'save-pix': 'POST',
       'admin-users': 'GET',
       'admin-activate': 'POST',
-      'admin-block': 'POST'
+      'admin-block': 'POST',
+      'admin-referrals': 'GET',
+      'admin-payout': 'POST'
     };
 
     if (![].concat(allowed[action] || []).includes(req.method)) fail(404, 'Rota não encontrada.');
@@ -71,9 +74,20 @@ export default async function handler(req, context = {}) {
       const { r: logR, d: logD } = await auth(e, 'token?grant_type=password', { email, password });
       if (!logR.ok) fail(500, 'Conta criada, mas ocorreu um erro no acesso. Tente entrar com seu e-mail e senha.');
 
+      const refRaw = typeof p.ref === 'string' ? p.ref.trim().toLowerCase() : '';
+      let referredBy = null;
+      if (refRaw && refRaw !== email) {
+        try {
+          const spRows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(refRaw)}&select=customer_email`);
+          if (spRows && spRows[0] && spRows[0].customer_email) {
+            referredBy = spRows[0].customer_email;
+          }
+        } catch {}
+      }
+
       setSession(headers, logD);
       if (logD.user?.id) {
-        await account(e, logD.user.id, email);
+        await account(e, logD.user.id, email, referredBy);
       }
       result = { ok: true, created: true };
     } else if (action === 'login') {
@@ -153,7 +167,42 @@ export default async function handler(req, context = {}) {
       const sub = checkSubscription(a, u.email);
 
       if (action === 'session') {
-        result = { email: u.email, billing: sub };
+        let activeRefs = 0;
+        let totalRefs = 0;
+        try {
+          const refs = await db(e, `driver_accounts?referred_by=ilike.${encodeURIComponent(u.email)}&select=subscription_status,subscription_expires_at`).catch(() => []);
+          if (Array.isArray(refs)) {
+            const now = new Date();
+            totalRefs = refs.length;
+            activeRefs = refs.filter(r => r.subscription_status === 'active' && r.subscription_expires_at && new Date(r.subscription_expires_at) > now).length;
+          }
+        } catch {}
+
+        result = {
+          email: u.email,
+          billing: sub,
+          referral: {
+            code: u.email,
+            referred_by: a.referred_by || null,
+            balance: Number(a.referral_balance) || 0,
+            total_earned: Number(a.referral_total_earned) || 0,
+            pix_key: a.pix_key || '',
+            pix_key_type: a.pix_key_type || 'CPF',
+            active_referrals: activeRefs,
+            total_referrals: totalRefs
+          }
+        };
+      } else if (action === 'save-pix') {
+        const p = await body(req, 1024);
+        const pixKey = typeof p.pix_key === 'string' ? p.pix_key.trim() : '';
+        const pixKeyType = typeof p.pix_key_type === 'string' ? p.pix_key_type.trim() : 'CPF';
+        if (!pixKey) fail(400, 'Informe sua chave Pix.');
+        if (pixKey.length > 120) fail(400, 'Chave Pix muito longa.');
+        await db(e, `driver_accounts?user_id=eq.${u.id}`, 'PATCH', {
+          pix_key: pixKey,
+          pix_key_type: pixKeyType
+        });
+        result = { ok: true, message: 'Chave Pix salva com sucesso!' };
       } else if (action === 'export') {
         result = { data: a.data };
       } else if (action === 'data') {
@@ -171,6 +220,7 @@ export default async function handler(req, context = {}) {
             const isAct = row.subscription_status === 'active' && exp && exp > now;
             const daysLeft = exp && isAct ? Math.ceil((exp - now) / (1000 * 60 * 60 * 24)) : 0;
             return {
+              user_id: row.user_id,
               email: row.customer_email || 'Não informado',
               is_active: isAct,
               status: row.subscription_status || 'inactive',
@@ -186,7 +236,7 @@ export default async function handler(req, context = {}) {
         const days = Number(p.days) || 30;
         if (!targetEmail) fail(400, 'Informe o e-mail do motorista.');
 
-        const rows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at`);
+        const rows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at,referred_by`);
         if (!rows || rows.length === 0) {
           fail(404, 'Nenhum motorista encontrado com este e-mail. Peça para o motorista fazer o primeiro login no site antes.');
         }
@@ -202,9 +252,41 @@ export default async function handler(req, context = {}) {
           subscription_expires_at: newDate
         });
 
+        // 🤝 Comissão recorrente para o padrinho: R$ 8 no mensal (30d), R$ 25 no trimestral (90d)
+        let commissionNote = '';
+        if (rows[0].referred_by) {
+          const sponsorEmail = rows[0].referred_by.trim().toLowerCase();
+          if (sponsorEmail && sponsorEmail !== targetEmail) {
+            const comm = days >= 90 ? 25.00 : 8.00;
+            try {
+              const spRows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(sponsorEmail)}&select=user_id,referral_balance,referral_total_earned`).catch(() => []);
+              if (spRows && spRows[0]) {
+                const currentBal = Number(spRows[0].referral_balance) || 0;
+                const currentTot = Number(spRows[0].referral_total_earned) || 0;
+                await db(e, `driver_accounts?user_id=eq.${spRows[0].user_id}`, 'PATCH', {
+                  referral_balance: currentBal + comm,
+                  referral_total_earned: currentTot + comm
+                }).catch(() => {});
+
+                await db(e, 'referral_events', 'POST', {
+                  sponsor_email: sponsorEmail,
+                  referred_email: targetEmail,
+                  plan_days: days,
+                  commission_amount: comm,
+                  payout_status: 'pending'
+                }).catch(() => {});
+
+                commissionNote = ` • 🤝 Comissão de R$ ${comm.toFixed(2).replace('.', ',')} creditada para ${sponsorEmail}!`;
+              }
+            } catch (errComm) {
+              console.warn('Erro ao creditar comissão:', errComm);
+            }
+          }
+        }
+
         result = {
           ok: true,
-          message: `Acesso liberado com sucesso para ${targetEmail} por mais ${days} dias (Até: ${new Date(newDate).toLocaleDateString('pt-BR')})!`
+          message: `Acesso liberado com sucesso para ${targetEmail} por mais ${days} dias (Até: ${new Date(newDate).toLocaleDateString('pt-BR')})!${commissionNote}`
         };
       } else if (action === 'admin-block') {
         if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
@@ -218,6 +300,68 @@ export default async function handler(req, context = {}) {
         });
 
         result = { ok: true, message: `O motorista ${targetEmail} foi bloqueado com sucesso.` };
+      } else if (action === 'admin-referrals') {
+        if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
+        const allAccounts = await db(e, 'driver_accounts?select=user_id,customer_email,pix_key,pix_key_type,referral_balance,referral_total_earned,referred_by,subscription_status,subscription_expires_at&order=referral_balance.desc').catch(() => []);
+        
+        const now = new Date();
+        const referralsMap = new Map();
+        (allAccounts || []).forEach(acc => {
+          if (acc.referred_by) {
+            const sp = acc.referred_by.trim().toLowerCase();
+            const list = referralsMap.get(sp) || [];
+            const isAct = acc.subscription_status === 'active' && acc.subscription_expires_at && new Date(acc.subscription_expires_at) > now;
+            list.push({ email: acc.customer_email, active: isAct });
+            referralsMap.set(sp, list);
+          }
+        });
+
+        const sponsors = (allAccounts || [])
+          .filter(acc => (Number(acc.referral_balance) > 0 || Number(acc.referral_total_earned) > 0 || referralsMap.has((acc.customer_email || '').toLowerCase())))
+          .map(acc => {
+            const spEmail = (acc.customer_email || '').toLowerCase();
+            const refs = referralsMap.get(spEmail) || [];
+            return {
+              email: acc.customer_email,
+              pix_key: acc.pix_key || '',
+              pix_key_type: acc.pix_key_type || 'CPF',
+              balance: Number(acc.referral_balance) || 0,
+              total_earned: Number(acc.referral_total_earned) || 0,
+              total_referrals: refs.length,
+              active_referrals: refs.filter(r => r.active).length
+            };
+          });
+
+        const events = await db(e, 'referral_events?select=*&order=created_at.desc&limit=100').catch(() => []);
+
+        const totalPending = sponsors.reduce((s, x) => s + x.balance, 0);
+        const totalPaid = sponsors.reduce((s, x) => s + Math.max(0, x.total_earned - x.balance), 0);
+
+        result = {
+          sponsors,
+          events: Array.isArray(events) ? events : [],
+          metrics: {
+            total_pending: totalPending,
+            total_paid: totalPaid,
+            total_referred_users: (allAccounts || []).filter(a => Boolean(a.referred_by)).length
+          }
+        };
+      } else if (action === 'admin-payout') {
+        if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
+        const p = await body(req, 1024);
+        const sponsorEmail = (p.sponsor_email || '').trim().toLowerCase();
+        if (!sponsorEmail) fail(400, 'Informe o e-mail do padrinho.');
+
+        await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(sponsorEmail)}`, 'PATCH', {
+          referral_balance: 0
+        });
+
+        await db(e, `referral_events?sponsor_email=ilike.${encodeURIComponent(sponsorEmail)}&payout_status=eq.pending`, 'PATCH', {
+          payout_status: 'paid',
+          paid_at: new Date().toISOString()
+        }).catch(() => {});
+
+        result = { ok: true, message: `Pagamento de comissão para ${sponsorEmail} registrado com sucesso!` };
       }
     }
   } catch (err) {

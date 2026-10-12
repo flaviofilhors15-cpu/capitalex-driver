@@ -68,6 +68,8 @@ function setup({ isActive = true, isAdmin = false, row = {}, userOk = true, patc
       } else {
         data = [account];
       }
+    } else if (path === '/rest/v1/referral_events') {
+      data = [];
     } else if (path === '/auth/v1/otp' || path === '/auth/v1/logout') {
       data = {};
     } else {
@@ -260,4 +262,37 @@ test('missing configuration does not expose data', async () => {
   delete process.env.SUPABASE_URL;
   assert.equal((await handler(req('session'))).status, 503);
   process.env.SUPABASE_URL = old;
+});
+
+test('save-pix stores driver pix key', async () => {
+  setup();
+  const res = await handler(req('save-pix', 'POST', { pix_key: '11999998888', pix_key_type: 'Telefone' }));
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true, message: 'Chave Pix salva com sucesso!' });
+});
+
+test('admin-activate calculates and credits referral commission (8 for 30d, 25 for 90d)', async () => {
+  setup({ isAdmin: true, row: { customer_email: 'indicado@test.com', referred_by: 'padrinho@test.com' } });
+  
+  // Test 30 days -> R$ 8,00
+  const r30 = await handler(req('admin-activate', 'POST', { email: 'indicado@test.com', days: 30 }));
+  assert.equal(r30.status, 200);
+  const data30 = await r30.json();
+  assert.match(data30.message, /Comissão de R\$ 8,00 creditada/);
+
+  // Test 90 days -> R$ 25,00
+  const r90 = await handler(req('admin-activate', 'POST', { email: 'indicado@test.com', days: 90 }));
+  assert.equal(r90.status, 200);
+  const data90 = await r90.json();
+  assert.match(data90.message, /Comissão de R\$ 25,00 creditada/);
+});
+
+test('admin-referrals endpoint works for admin', async () => {
+  setup({ isAdmin: true });
+  const res = await handler(req('admin-referrals'));
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(Array.isArray(data.sponsors));
+  assert.ok(Array.isArray(data.events));
+  assert.ok(data.metrics);
 });

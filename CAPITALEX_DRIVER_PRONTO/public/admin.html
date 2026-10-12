@@ -100,6 +100,23 @@
     .actions-cell .btn { padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; }
     
     .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+    
+    @media (max-width: 768px) {
+      input, select, textarea { font-size: 16px !important; }
+      header { padding: 12px 16px; }
+      header h1 { font-size: 1.1rem; }
+      .container { margin: 16px auto; padding: 0 12px; }
+      .panel-section { padding: 16px; border-radius: 14px; margin-bottom: 20px; }
+      .metrics-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
+      .metric-card { padding: 16px; }
+      .metric-value { font-size: 1.8rem; }
+      .activation-row { flex-direction: column; align-items: stretch; }
+      .activation-row input { min-width: 100%; }
+      .activation-row .btn { width: 100%; text-align: center; }
+      .filters-row { flex-direction: column; }
+      .search-input { min-width: 100%; }
+      .table-container { margin: 0 -16px; padding: 0 16px; -webkit-overflow-scrolling: touch; }
+    }
   </style>
 </head>
 <body>
@@ -129,9 +146,10 @@
     <div id="adminPanel">
       
       <!-- Nav Tabs -->
-      <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
+      <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 12px; overflow-x: auto;">
         <button class="filter-btn active" id="tabGeneral" onclick="switchAdminTab('general')">Painel Geral</button>
         <button class="filter-btn" id="tabSales" onclick="switchAdminTab('sales')">💰 Meu Lucro & Vendas</button>
+        <button class="filter-btn" id="tabReferrals" onclick="switchAdminTab('referrals')">🤝 Comissões & Indicações</button>
       </div>
 
       <!-- General Tab -->
@@ -234,6 +252,79 @@
         </div>
       </div>
       
+      <!-- Referrals Tab -->
+      <div id="tabContentReferrals" style="display: none;">
+        <div class="metrics-grid">
+          <div class="metric-card" style="border-color: var(--orange); background: linear-gradient(135deg, rgba(255, 180, 107, 0.1) 0%, transparent 100%);">
+            <span class="metric-title" style="color: var(--orange-text);">Comissões a Pagar (Pix)</span>
+            <span class="metric-value" style="color: var(--orange);" id="metricComissoesPendentes">R$ 0,00</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-title">Comissões Já Pagas</span>
+            <span class="metric-value metric-green" id="metricComissoesPagas">R$ 0,00</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-title">Total de Motoristas Indicados</span>
+            <span class="metric-value" id="metricTotalIndicados">0</span>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-header">
+            <div>
+              <h2>Padrinhos com Saldo a Receber</h2>
+              <p>Valores acumulados de R$ 8,00 por mês ou R$ 25,00 por trimestre por amigo ativo.</p>
+            </div>
+            <button onclick="carregarIndicações()" class="btn" style="background: var(--line); color: var(--text);">🔄 Atualizar Comissões</button>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Padrinho</th>
+                  <th>Chave Pix Cadastrada</th>
+                  <th>Amigos Ativos</th>
+                  <th>Saldo a Pagar</th>
+                  <th>Total Ganho</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="sponsorsList">
+                <tr><td colspan="6" class="empty-state">Carregando comissões...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-header">
+            <div>
+              <h2>Histórico de Comissões Geradas</h2>
+              <p>Registro de cada R$ 8,00 ou R$ 25,00 gerado nas ativações e renovações.</p>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Indicado (Pagante)</th>
+                  <th>Padrinho (Beneficiário)</th>
+                  <th>Plano</th>
+                  <th>Comissão</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="eventsList">
+                <tr><td colspan="6" class="empty-state">Carregando histórico...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
     </div>
   </div>
   
@@ -244,10 +335,60 @@
     let salesChart = null;
 
     // Persistência local para Vendas e Usuários Ocultos
-    function getHiddenUsers() { return JSON.parse(localStorage.getItem('admin_hidden_users') || '[]'); }
-    function setHiddenUser(email) { const list = getHiddenUsers(); if(!list.includes(email)) list.push(email); localStorage.setItem('admin_hidden_users', JSON.stringify(list)); }
-    function getSales() { return JSON.parse(localStorage.getItem('admin_sales') || '[]'); }
-    function addSale(value, plan) { const sales = getSales(); sales.push({ date: new Date().toISOString(), value, plan }); localStorage.setItem('admin_sales', JSON.stringify(sales)); renderChart(); }
+    function getLocalDateKey(dInput) {
+      const d = dInput ? new Date(dInput) : new Date();
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getHiddenUsers() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('admin_hidden_users') || '[]');
+        return Array.isArray(raw) ? raw.map(e => String(e).trim().toLowerCase()) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function setHiddenUser(identifier) {
+      if (!identifier) return;
+      const clean = String(identifier).trim().toLowerCase();
+      const list = getHiddenUsers();
+      if (!list.includes(clean)) {
+        list.push(clean);
+        localStorage.setItem('admin_hidden_users', JSON.stringify(list));
+      }
+    }
+
+    function removeHiddenUser(identifier) {
+      if (!identifier) return;
+      const clean = String(identifier).trim().toLowerCase();
+      const list = getHiddenUsers().filter(h => h !== clean);
+      localStorage.setItem('admin_hidden_users', JSON.stringify(list));
+    }
+
+    function isUserHidden(u) {
+      const hidden = getHiddenUsers();
+      const email = (u.email || '').trim().toLowerCase();
+      const userId = (u.user_id || '').trim().toLowerCase();
+      return (email && email !== 'não informado' && hidden.includes(email)) || (userId && hidden.includes(userId));
+    }
+
+    function getSales() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('admin_sales') || '[]');
+        return Array.isArray(raw) ? raw : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function addSale(value, plan) {
+      const sales = getSales();
+      sales.push({ date: new Date().toISOString(), value: Number(value) || 0, plan });
+      localStorage.setItem('admin_sales', JSON.stringify(sales));
+      renderChart();
+    }
 
     async function api(rota, metodo = 'GET', body = null) {
       const res = await fetch('/api/' + rota, { method: metodo, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
@@ -304,10 +445,14 @@
     function switchAdminTab(tab) {
       document.getElementById('tabGeneral').classList.toggle('active', tab === 'general');
       document.getElementById('tabSales').classList.toggle('active', tab === 'sales');
+      document.getElementById('tabReferrals').classList.toggle('active', tab === 'referrals');
       document.getElementById('tabContentGeneral').style.display = tab === 'general' ? 'block' : 'none';
       document.getElementById('tabContentSales').style.display = tab === 'sales' ? 'block' : 'none';
+      document.getElementById('tabContentReferrals').style.display = tab === 'referrals' ? 'block' : 'none';
       if (tab === 'sales') {
-        setTimeout(renderChart, 50); // Dá tempo do display: block aplicar antes de renderizar
+        setTimeout(renderChart, 50);
+      } else if (tab === 'referrals') {
+        carregarIndicações();
       }
     }
 
@@ -317,7 +462,9 @@
       const msg = document.getElementById('statusMsg');
       if (!email) return alert('Digite o e-mail primeiro.');
 
-      msg.textContent = 'Processando...'; msg.style.color = 'var(--muted)';
+      const buttons = document.querySelectorAll('.activation-row button');
+      buttons.forEach(b => b.disabled = true);
+      msg.textContent = 'Processando liberação...'; msg.style.color = 'var(--muted)';
       try {
         const res = await api('admin-activate', 'POST', { email, days: dias });
         msg.textContent = '✅ ' + res.message; msg.style.color = 'var(--green)';
@@ -336,6 +483,8 @@
         }
       } catch (err) {
         msg.textContent = '❌ ' + err.message; msg.style.color = 'var(--red)';
+      } finally {
+        buttons.forEach(b => b.disabled = false);
       }
     }
 
@@ -366,16 +515,16 @@
       carregarUsuarios();
     }
 
-    async function ocultarUsuario(email) {
+    async function ocultarUsuario(email, userId) {
       if (!confirm(`Ocultar ${email} da lista principal? Você pode vê-lo e restaurá-lo na aba "Ocultos".`)) return;
-      setHiddenUser(email.trim().toLowerCase());
+      if (email && email !== 'Não informado') setHiddenUser(email);
+      if (userId) setHiddenUser(userId);
       carregarUsuarios();
     }
 
-    function restaurarUsuario(email) {
-      const hidden = getHiddenUsers();
-      const updated = hidden.filter(h => h !== email.trim().toLowerCase());
-      localStorage.setItem('admin_hidden_users', JSON.stringify(updated));
+    function restaurarUsuario(email, userId) {
+      if (email) removeHiddenUser(email);
+      if (userId) removeHiddenUser(userId);
       carregarUsuarios();
     }
 
@@ -394,10 +543,8 @@
 
     function atualizarMetricas() {
       let ativos = 0; let vencendo = 0;
-      const hidden = getHiddenUsers();
       todosUsuarios.forEach(u => {
-        const emailNorm = (u.email || '').trim().toLowerCase();
-        if (!hidden.includes(emailNorm) && u.is_active) {
+        if (!isUserHidden(u) && u.is_active) {
           ativos++;
           if (u.days_left <= 3) vencendo++;
         }
@@ -417,23 +564,23 @@
 
     function aplicarFiltros() {
       const termo = document.getElementById('filtroEmail').value.toLowerCase().trim();
-      const hidden = getHiddenUsers();
+      const hiddenCount = todosUsuarios.filter(u => isUserHidden(u)).length;
       
       const btnOcultos = document.getElementById('btnFiltroHidden');
-      if (btnOcultos) btnOcultos.textContent = `Ocultos (${hidden.length})`;
+      if (btnOcultos) btnOcultos.textContent = `Ocultos (${hiddenCount})`;
 
       let filtrados = [];
       if (currentFilter === 'hidden') {
         // Exibe apenas quem foi ocultado
         filtrados = todosUsuarios.filter(u => {
           const e = (u.email || '').trim().toLowerCase();
-          return hidden.includes(e) && e.includes(termo);
+          return isUserHidden(u) && e.includes(termo);
         });
       } else {
         // Exibe normais removendo os ocultos
         filtrados = todosUsuarios.filter(u => {
           const e = (u.email || '').trim().toLowerCase();
-          return !hidden.includes(e) && e.includes(termo);
+          return !isUserHidden(u) && e.includes(termo);
         });
         if (currentFilter === 'active') filtrados = filtrados.filter(u => u.is_active && u.days_left > 3);
         else if (currentFilter === 'expiring') filtrados = filtrados.filter(u => u.is_active && u.days_left <= 3);
@@ -477,8 +624,8 @@
 
         const isHiddenView = currentFilter === 'hidden';
         const botaoAcao = isHiddenView
-          ? `<button onclick="restaurarUsuario('${u.email}')" class="btn btn-30" style="background: #3b82f6; color: #fff;" title="Reexibir na lista principal">Restaurar</button>`
-          : `<button onclick="ocultarUsuario('${u.email}')" class="btn btn-block" title="Ocultar da lista">Ocultar</button>`;
+          ? `<button onclick="restaurarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-30" style="background: #3b82f6; color: #fff;" title="Reexibir na lista principal">Restaurar</button>`
+          : `<button onclick="ocultarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-block" title="Ocultar da lista">Ocultar</button>`;
 
         return `
           <tr>
@@ -521,46 +668,53 @@
         if (sales.length === 0 && todosUsuarios.length > 0) {
           const ativos = todosUsuarios.filter(u => u.is_active);
           if (ativos.length > 0) {
-            sales = ativos.map(u => ({
-              date: u.expires_at || new Date().toISOString(),
-              value: u.days_left > 40 ? 69.90 : 25.95,
-              plan: u.days_left > 40 ? 90 : 30
-            }));
+            sales = ativos.map(u => {
+              const planDays = u.days_left > 40 ? 90 : 30;
+              let saleDate = new Date();
+              if (u.expires_at) {
+                const expDate = new Date(u.expires_at);
+                saleDate = new Date(expDate.getTime() - planDays * 86400000);
+                if (saleDate > new Date()) saleDate = new Date();
+              }
+              return {
+                date: saleDate.toISOString(),
+                value: planDays === 90 ? 69.90 : 25.95,
+                plan: planDays
+              };
+            });
             localStorage.setItem('admin_sales', JSON.stringify(sales));
           }
         }
 
         let total = 0;
         let monthTotal = 0;
-        const today = new Date();
-        const currentMonth = today.toISOString().slice(0, 7);
-        
+        const todayStr = getLocalDateKey();
+        const currentMonth = todayStr.slice(0, 7);
         const byDay = {};
         
         sales.forEach(s => {
-          total += s.value;
-          const sMonth = s.date.slice(0, 7);
-          if (sMonth === currentMonth) monthTotal += s.value;
-          
-          const day = s.date.slice(0, 10);
-          byDay[day] = (byDay[day] || 0) + s.value;
+          const val = Number(s.value) || 0;
+          total += val;
+          const dayKey = getLocalDateKey(s.date);
+          if (dayKey.slice(0, 7) === currentMonth) monthTotal += val;
+          byDay[dayKey] = (byDay[dayKey] || 0) + val;
         });
 
         document.getElementById('metricTotalSales').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         document.getElementById('metricMonthSales').textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         const chartContainer = document.getElementById('tabContentSales');
-        if (chartContainer.style.display === 'none') {
+        if (chartContainer && chartContainer.style.display === 'none') {
            return;
         }
 
         // Build array of last 14 days
         const labels = [];
         const data = [];
-        for(let i=13; i>=0; i--) {
+        for (let i = 13; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          const dayKey = d.toISOString().slice(0, 10);
+          const dayKey = getLocalDateKey(d);
           labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
           data.push(byDay[dayKey] || 0);
         }
@@ -687,6 +841,87 @@
         }
       } catch (err) {
         console.error('Erro ao renderizar gráfico:', err);
+      }
+    }
+
+    const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    // Indicações e Comissões
+    async function carregarIndicações() {
+      const spTbody = document.getElementById('sponsorsList');
+      const evTbody = document.getElementById('eventsList');
+      try {
+        const res = await api('admin-referrals');
+        const sponsors = res.sponsors || [];
+        const events = res.events || [];
+        const metrics = res.metrics || {};
+
+        document.getElementById('metricComissoesPendentes').textContent = (metrics.total_pending || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('metricComissoesPagas').textContent = (metrics.total_paid || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('metricTotalIndicados').textContent = metrics.total_referred_users || 0;
+
+        if (sponsors.length === 0) {
+          spTbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum padrinho com indicações no momento.</td></tr>';
+        } else {
+          spTbody.innerHTML = sponsors.map(s => {
+            const hasBal = s.balance > 0;
+            const pixInfo = s.pix_key
+              ? `<div style="display: flex; align-items: center; gap: 6px;"><strong>${esc(s.pix_key)}</strong> <small style="color:var(--muted)">(${esc(s.pix_key_type||'Pix')})</small> <button class="copy-btn" onclick="copiarEmail('${esc(s.pix_key)}')" title="Copiar Chave Pix"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button></div>`
+              : '<span style="color: var(--muted)">Não cadastrada</span>';
+
+            const pagarBtn = hasBal
+              ? `<button onclick="pagarComissaoPix('${esc(s.email)}', ${s.balance}, this)" class="btn btn-30" style="background: #22c55e; color: #081320; font-weight: 800;">💸 Marcar Pix Feito</button>`
+              : '<span class="badge badge-active" style="background:rgba(52,214,172,0.15);color:#34d6ac;">Em dia</span>';
+
+            return `
+              <tr>
+                <td><strong>${esc(s.email)}</strong></td>
+                <td>${pixInfo}</td>
+                <td><span class="badge badge-active">${s.active_referrals} ativos (${s.total_referrals} total)</span></td>
+                <td><strong style="color: ${hasBal ? '#ffb46b' : '#849fb8'}; font-size: 1.05rem;">${s.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
+                <td>${s.total_earned.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>${pagarBtn}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        if (events.length === 0) {
+          evTbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma comissão registrada ainda.</td></tr>';
+        } else {
+          evTbody.innerHTML = events.map(e => {
+            const statusBadge = e.payout_status === 'paid'
+              ? '<span class="badge badge-active">✔ Pago no Pix</span>'
+              : '<span class="badge badge-expiring">⏳ A Pagar</span>';
+            const dt = new Date(e.created_at).toLocaleDateString('pt-BR');
+            return `
+              <tr>
+                <td>${dt}</td>
+                <td><strong>${esc(e.referred_email)}</strong></td>
+                <td>${esc(e.sponsor_email)}</td>
+                <td>+${e.plan_days} dias</td>
+                <td><strong style="color: var(--green);">R$ ${Number(e.commission_amount).toFixed(2).replace('.', ',')}</strong></td>
+                <td>${statusBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        spTbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--red);">${err.message}</td></tr>`;
+      }
+    }
+
+    async function pagarComissaoPix(email, valor, btnEl) {
+      if (!confirm(`Confirmar que você já enviou o Pix de R$ ${valor.toFixed(2).replace('.', ',')} para ${email}? O saldo dele será zerado.`)) return;
+      if (btnEl) btnEl.disabled = true;
+      try {
+        const res = await api('admin-payout', 'POST', { sponsor_email: email });
+        alert('✅ ' + (res.message || 'Pagamento registrado com sucesso!'));
+        carregarIndicações();
+      } catch (err) {
+        alert('❌ Erro: ' + err.message);
+      } finally {
+        if (btnEl) btnEl.disabled = false;
       }
     }
 

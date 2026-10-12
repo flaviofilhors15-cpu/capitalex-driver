@@ -336,9 +336,36 @@
     }
   }
 
+  function showAdminLinks(isAdmin) {
+    if (!isAdmin) return;
+    if (!document.getElementById('headerAdminLink')) {
+      const headerAdminBtn = document.createElement('a');
+      headerAdminBtn.id = 'headerAdminLink';
+      headerAdminBtn.href = '/admin.html';
+      headerAdminBtn.className = 'ghost';
+      headerAdminBtn.style.cssText = 'color: #38bdf8; font-weight: 800; border: 1px solid rgba(56, 189, 248, 0.4); display: inline-flex; align-items: center; gap: 4px; text-decoration: none; padding: 7px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.08);';
+      headerAdminBtn.innerHTML = '👑 Admin QG';
+      const actions = document.querySelector('.header-actions');
+      if (actions) actions.prepend(headerAdminBtn);
+    }
+    if (!document.getElementById('mobileAdminLink')) {
+      const mobileAdminBtn = document.createElement('a');
+      mobileAdminBtn.id = 'mobileAdminLink';
+      mobileAdminBtn.href = '/admin.html';
+      mobileAdminBtn.className = 'sheet-menu-item';
+      mobileAdminBtn.style.cssText = 'color: #38bdf8; font-weight: 800; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.06);';
+      mobileAdminBtn.innerHTML = '<span style="font-size: 1.2rem;">👑</span><span>Painel Admin QG</span>';
+      const menuGrid = document.querySelector('.sheet-menu-grid');
+      if (menuGrid) menuGrid.prepend(mobileAdminBtn);
+    }
+  }
+
   async function boot() {
     try {
       session = await api('session');
+      window.CapitalexSession = session;
+      const isAdmin = Boolean(session?.billing?.isAdmin || session?.email === 'flaviofilhors15@gmail.com');
+      showAdminLinks(isAdmin);
       if (session?.billing?.active) {
         await window.DriverApp.load();
         unlock();
@@ -383,7 +410,8 @@
       try {
         if (authMode === 'register') {
           message('Criando sua conta...');
-          await api('register', 'POST', { email, password });
+          const ref = localStorage.getItem('capitalex_ref') || '';
+          await api('register', 'POST', { email, password, ref });
         } else {
           message('Entrando na sua conta...');
           await api('login', 'POST', { email, password });
@@ -452,6 +480,9 @@
     if (session?.billing?.active) unlock();
   });
 
-  window.Account = { api };
+  window.Account = {
+    api,
+    savePix: async (pix_key, pix_key_type) => api('save-pix', 'POST', { pix_key, pix_key_type })
+  };
   window.addEventListener('DOMContentLoaded', boot);
 })();

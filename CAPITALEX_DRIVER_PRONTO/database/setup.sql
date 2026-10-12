@@ -78,4 +78,29 @@ where user_id in (
   select id from auth.users where email = 'flaviofilhors15@gmail.com'
 );
 
+-- 5. Sistema de Indicações e Comissões Recorrentes (R$ 8 no mensal, R$ 25 no trimestral)
+alter table public.driver_accounts add column if not exists referral_code text;
+alter table public.driver_accounts add column if not exists referred_by text;
+alter table public.driver_accounts add column if not exists pix_key text;
+alter table public.driver_accounts add column if not exists pix_key_type text default 'CPF';
+alter table public.driver_accounts add column if not exists referral_balance numeric(10,2) not null default 0.00;
+alter table public.driver_accounts add column if not exists referral_total_earned numeric(10,2) not null default 0.00;
+
+create index if not exists idx_driver_accounts_referred_by on public.driver_accounts(referred_by);
+
+create table if not exists public.referral_events (
+  id uuid primary key default gen_random_uuid(),
+  sponsor_email text not null,
+  referred_email text not null,
+  plan_days int not null,
+  commission_amount numeric(10,2) not null,
+  payout_status text not null default 'pending', -- 'pending' ou 'paid'
+  created_at timestamptz not null default now(),
+  paid_at timestamptz
+);
+
+alter table public.referral_events enable row level security;
+revoke all on public.referral_events from public, anon, authenticated;
+grant select, insert, update, delete on public.referral_events to service_role;
+
 commit;
