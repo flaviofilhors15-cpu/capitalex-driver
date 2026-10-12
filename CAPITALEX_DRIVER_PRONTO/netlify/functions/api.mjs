@@ -234,9 +234,12 @@ export default async function handler(req, context = {}) {
         const p = await body(req, 1024);
         const targetEmail = (p.email || '').trim().toLowerCase();
         const days = Number(p.days) || 30;
-        if (!targetEmail) fail(400, 'Informe o e-mail do motorista.');
-
-        const rows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at,referred_by`);
+        let rows;
+        try {
+          rows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at,referred_by`);
+        } catch {
+          rows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(targetEmail)}&select=user_id,subscription_expires_at`);
+        }
         if (!rows || rows.length === 0) {
           fail(404, 'Nenhum motorista encontrado com este e-mail. Peça para o motorista fazer o primeiro login no site antes.');
         }

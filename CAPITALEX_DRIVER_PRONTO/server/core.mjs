@@ -87,7 +87,10 @@ export async function db(e, path, method = 'GET', body, prefer) {
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {})
   });
-  if (!r.ok) fail(503, 'Não foi possível acessar o banco de dados. Tente novamente.');
+  if (!r.ok) {
+    const errorMsg = (d && (d.message || d.error)) ? (d.message || d.error) : 'Não foi possível acessar o banco de dados. Tente novamente.';
+    fail(503, errorMsg);
+  }
   return d;
 }
 
