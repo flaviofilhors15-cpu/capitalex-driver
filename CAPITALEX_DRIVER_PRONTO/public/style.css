@@ -263,6 +263,10 @@ button:active {
 }
 :root.light-theme aside { background: #ffffff; border-right: 1px solid #cdd8e4; }
 :root.light-theme .brand { color: #0e1e2d; }
+:root.light-theme nav a { color: #475569; }
+:root.light-theme nav a:hover { background: #f1f5f9; color: #0f172a; }
+:root.light-theme nav a.active { background: #ecfdf5; color: #059669; border-color: #a7f3d0; font-weight: 700; }
+:root.light-theme nav a.active svg { stroke: #059669; }
 :root.light-theme input, :root.light-theme select { background: #ffffff; color: #0e1e2d; border-color: #a7bbcf; }
 :root.light-theme input:focus, :root.light-theme select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(52,214,172,0.3); }
 :root.light-theme dialog { background: #ffffff; border-color: #cdd8e4; box-shadow: 0 24px 60px rgba(0,0,0,0.2); }
