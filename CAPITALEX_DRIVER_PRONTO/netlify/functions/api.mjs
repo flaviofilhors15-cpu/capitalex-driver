@@ -217,7 +217,7 @@ export default async function handler(req, context = {}) {
         result = {
           users: users.map(row => {
             const exp = row.subscription_expires_at ? new Date(row.subscription_expires_at) : null;
-            const isAct = row.subscription_status === 'active' && exp && exp > now;
+            const isAct = (row.subscription_status === 'active' || row.subscription_status === 'trial') && exp && exp > now;
             const daysLeft = exp && isAct ? Math.ceil((exp - now) / (1000 * 60 * 60 * 24)) : 0;
             return {
               user_id: row.user_id,

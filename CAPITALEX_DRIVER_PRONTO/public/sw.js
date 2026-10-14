@@ -1,4 +1,4 @@
-const CACHE_NAME = 'capitalex-v5';
+const CACHE_NAME = 'capitalex-v7';
 const ASSETS = [
   '/',
   '/index.html',

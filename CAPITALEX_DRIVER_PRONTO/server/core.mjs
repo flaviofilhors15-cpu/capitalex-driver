@@ -148,8 +148,12 @@ export async function user(req, e) {
 }
 
 export async function account(e, id, email = '', referredBy = null) {
+  const now = new Date();
+  const trialEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
   await db(e, 'driver_accounts?on_conflict=user_id', 'POST', {
     user_id: id,
+    subscription_status: 'trial',
+    subscription_expires_at: trialEnd,
     ...(email ? { customer_email: email } : {}),
     ...(referredBy ? { referred_by: referredBy } : {})
   }, 'resolution=ignore-duplicates,return=minimal');
@@ -178,22 +182,24 @@ export async function rate(e, key, limit, seconds = 900) {
   if (ok === false) fail(429, 'Muitas tentativas. Aguarde alguns minutos e tente novamente.');
 }
 
-// Checagem da assinatura manual
+// Checagem da assinatura manual e teste grátis
 export function checkSubscription(a, userEmail = '') {
   const isAdmin = Boolean(a.is_admin || (userEmail && userEmail.toLowerCase() === 'flaviofilhors15@gmail.com'));
   if (isAdmin) {
-    return { active: true, isAdmin: true, status: 'active', daysLeft: 999, endsAt: null };
+    return { active: true, isAdmin: true, isTrial: false, status: 'active', daysLeft: 999, endsAt: null };
   }
 
   const now = new Date();
   const expiresAt = a.subscription_expires_at ? new Date(a.subscription_expires_at) : null;
-  const isActive = a.subscription_status === 'active' && expiresAt && expiresAt > now;
+  const isTrial = a.subscription_status === 'trial';
+  const isActive = (a.subscription_status === 'active' || isTrial) && expiresAt && expiresAt > now;
   const daysLeft = expiresAt && isActive ? Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)) : 0;
 
   return {
     active: Boolean(isActive),
     isAdmin: false,
-    status: isActive ? 'active' : (a.subscription_status === 'active' ? 'expired' : 'none'),
+    isTrial: Boolean(isTrial && isActive),
+    status: isActive ? (isTrial ? 'trial' : 'active') : (isTrial ? 'trial_expired' : (a.subscription_status === 'active' ? 'expired' : 'none')),
     daysLeft,
     endsAt: expiresAt ? Math.floor(expiresAt.getTime() / 1000) : null
   };

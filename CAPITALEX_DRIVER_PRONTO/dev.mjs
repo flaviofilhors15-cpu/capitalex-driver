@@ -82,10 +82,11 @@ async function handleApiMock(req, res, action) {
 
     const newUser = {
       email,
-      is_active: false,
-      status: 'inactive',
-      expires_at: null,
-      days_left: 0,
+      is_active: true,
+      status: 'trial',
+      is_trial: true,
+      expires_at: new Date(Date.now() + 3 * 86400000).toISOString(),
+      days_left: 3,
       is_admin: email === 'flaviofilhors15@gmail.com'
     };
     mockDb.users.push(newUser);
@@ -100,10 +101,11 @@ async function handleApiMock(req, res, action) {
     if (!user) {
       user = {
         email,
-        is_active: email === 'flaviofilhors15@gmail.com',
-        status: email === 'flaviofilhors15@gmail.com' ? 'active' : 'inactive',
-        expires_at: email === 'flaviofilhors15@gmail.com' ? new Date(Date.now() + 365 * 86400000).toISOString() : null,
-        days_left: email === 'flaviofilhors15@gmail.com' ? 365 : 0,
+        is_active: true,
+        status: 'trial',
+        is_trial: true,
+        expires_at: new Date(Date.now() + 3 * 86400000).toISOString(),
+        days_left: 3,
         is_admin: email === 'flaviofilhors15@gmail.com'
       };
       mockDb.users.push(user);
@@ -120,7 +122,8 @@ async function handleApiMock(req, res, action) {
       billing: {
         active: Boolean(u.is_active || u.is_admin),
         isAdmin: Boolean(u.is_admin || u.email === 'flaviofilhors15@gmail.com'),
-        status: u.is_active ? 'active' : 'inactive',
+        isTrial: Boolean(u.is_trial),
+        status: u.is_trial ? 'trial' : (u.is_active ? 'active' : 'inactive'),
         daysLeft: u.days_left,
         endsAt: u.expires_at ? Math.floor(new Date(u.expires_at).getTime() / 1000) : null
       }

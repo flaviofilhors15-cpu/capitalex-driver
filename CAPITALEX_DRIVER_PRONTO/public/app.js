@@ -175,6 +175,28 @@ function donut(entries=selected()){
   return `<div class="donut-layout"><div style="position:relative;width:220px;height:220px;"><canvas id="${id}"></canvas><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-weight:700;margin-top:4px">TOTAL GASTO</span><span style="font-size:19px;font-weight:800;color:var(--text)">${money(total)}</span></div></div><div class="donut-legend">${items.map(([k,v],i)=>`<div class="list-row"><span><i style="background:${colors[i%colors.length]}"></i>${esc(k)}</span><span><strong>${money(v)}</strong><small>${total>0?number(v/total*100):0}%</small></span></div>`).join('')}</div></div>`;
 }
 function goalPanel(title,actual,target,note){const pct=target>0?Math.max(0,actual/target*100):100;return `<h2>${title}</h2><p class="muted">${money(actual)} de ${money(target)}</p><div class="metric">${number(pct)}%</div><progress max="100" value="${Math.min(100,pct)}" aria-label="${esc(title)}"></progress><p>${actual>=target?'Objetivo alcançado. Bom trabalho!':`Faltam <strong>${money(target-actual)}</strong>`}</p><small>${note}</small>`;}
+function economyCard(t){
+  const entries=selected();
+  const fuelExpenses=entries
+    .filter(e=>e.type==='expense'&&(e.category==='Combustível'||(e.description&&e.description.toLowerCase().includes('combust'))))
+    .reduce((s,e)=>s+e.amount,0);
+  const totalExpense=t.expense;
+  let estimatedSavings=0,hasExpenses=false;
+  if(fuelExpenses>0){
+    estimatedSavings=round(fuelExpenses*0.14);
+    hasExpenses=true;
+  }else if(totalExpense>0){
+    estimatedSavings=round(totalExpense*0.12);
+    hasExpenses=true;
+  }
+  const monthlyCost=25.95;
+  const timesPaid=estimatedSavings>0?(estimatedSavings/monthlyCost).toFixed(1).replace('.',','):'0';
+  if(!hasExpenses||estimatedSavings<15){
+    return `<div class="smart-economy-card promo"><div class="economy-icon-wrap">💡</div><div class="economy-content"><div class="economy-badge">PLACAR DE ECONOMIA</div><h3>Monitore seus abastecimentos</h3><p>Motoristas organizados cortam em média <strong>14% em custos de combustível</strong> ao evitar rodar vazios. Lance seus abastecimentos para ver sua economia real!</p></div></div>`;
+  }
+  const savingsFormatted=hideValues?'•••••':money(estimatedSavings);
+  return `<div class="smart-economy-card"><div class="economy-icon-wrap">⚡</div><div class="economy-content"><div class="economy-badge">💡 ECONOMIA INTELIGENTE IDENTIFICADA</div><div class="economy-headline">O Capitalex já ajudou você a identificar <strong class="economy-amount">${savingsFormatted}</strong> em economia de combustível e custos evitados no período.</div><div class="economy-footer"><span class="economy-pill">🔥 Já pagou sua assinatura mais de <strong>${timesPaid}x</strong></span><span class="economy-subtext">Cálculo baseado na redução de km rodado vazio e controle de consumo.</span></div></div></div>`;
+}
  function dashboard(){
   const t=totals(selected()),today=totals(state().entries.filter(e=>e.date===dateKey())),reserve=round(t.km*state().reservePerKm);
   const p=state().profile;let alertHtml='';
@@ -186,10 +208,12 @@ function goalPanel(title,actual,target,note){const pct=target>0?Math.max(0,actua
   let reminderBanner = '';
   if (window.CapitalexNotifier && window.CapitalexNotifier.isSupported() && window.CapitalexNotifier.getPermission() === 'default' && !localStorage.getItem('capitalex_reminders_dismissed')) {
     reminderBanner = `<div class="card feature reminder-banner" style="background:linear-gradient(135deg,rgba(40,80,120,0.5),rgba(20,40,70,0.7));border:1px solid #3875a8;color:#d5e8ff;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 18px;border-radius:12px;"><div><strong style="display:flex;align-items:center;gap:6px;font-size:15px;color:#fff;">🔔 Ativar Lembretes Diários</strong><p style="margin:4px 0 0;font-size:13px;color:#bcd2ea">Receba bênçãos de bom dia e lembretes para não esquecer de anotar corridas (07:00, 12:30, 17:30 e 21:30).</p></div><div style="display:flex;gap:8px;align-items:center;"><button class="primary" data-action="enable-reminders" style="white-space:nowrap;padding:8px 16px;font-size:13px;">Ativar Agora</button><button class="ghost" data-action="dismiss-reminders" style="padding:8px 12px;font-size:13px;" title="Depois">✕</button></div></div>`;
-  }
-  return `${alertHtml}${reminderBanner}${cards(t)}<div class="split"><section class="panel"><div class="panel-head"><div><h2>Ritmo da semana</h2><p>7 dias até a data final do período • valores em R$</p></div><span class="tag">7 DIAS</span></div>${chart()}</section><section class="panel">${goalPanel('Sua meta de hoje',today.net,state().goals.daily,'Meta sobre o saldo, antes das reservas estimadas.')}<div class="actions" style="margin-top:20px"><button class="primary" data-action="income">🚗 Nova Corrida</button><button class="ghost" data-action="expense">⛽ Novo Gasto</button><button class="ghost" data-action="daily">⚡ Fechar Dia</button></div></section></div><section class="panel" style="margin-bottom:22px"><div class="panel-head"><div><h2>Para onde foi o dinheiro</h2><p>Despesas do período, por categoria</p></div><a href="#gastos" class="positive">Ver despesas</a></div>${donut()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Últimos lançamentos</h2><a href="#corridas" class="positive">Ver ganhos</a></div>${table([...selected()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5))}</section><section class="panel"><h2>Olhar para o próximo mês</h2><p class="muted">Provisão estimada para o desgaste do carro.</p><div class="list-row"><span>Reserva sugerida</span><strong>${money(reserve)}</strong></div><div class="list-row"><span>Saldo após provisão</span><strong class="positive">${money(t.net-reserve)}</strong></div><p class="notice">Estimativa de ${money(state().reservePerKm)} por km. Não movimenta dinheiro e não é uma despesa paga. Ajuste em Veículo.</p></section></div>`;
+  const ipvaTotalDash = state().funds.filter(f=>f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva')||f.name.toLowerCase().includes('seguro')).reduce((a,f)=>a+f.amount,0);
+  const targetIpvaDash = Number(localStorage.getItem('cap_ipva_goal'))||Number(state().profile.ipvaGoal)||2400;
+  const pctIpvaDash = Math.min(100, Math.round((ipvaTotalDash/targetIpvaDash)*100));
+  return `${alertHtml}${reminderBanner}${cards(t)}${economyCard(t)}<div class="split"><section class="panel"><div class="panel-head"><div><h2>Ritmo da semana</h2><p>7 dias até a data final do período • valores em R$</p></div><span class="tag">7 DIAS</span></div>${chart()}</section><section class="panel">${goalPanel('Sua meta de hoje',today.net,state().goals.daily,'Meta sobre o saldo, antes das reservas estimadas.')}<div class="actions" style="margin-top:20px"><button class="primary" data-action="income">🚗 Nova Corrida</button><button class="ghost" data-action="expense">⛽ Novo Gasto</button><button class="ghost" data-action="daily">⚡ Fechar Dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;"><span style="font-size:15px;">📸</span> Card do Dia</button></div></section></div><section class="panel" style="margin-bottom:22px"><div class="panel-head"><div><h2>Para onde foi o dinheiro</h2><p>Despesas do período, por categoria</p></div><a href="#gastos" class="positive">Ver despesas</a></div>${donut()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Últimos lançamentos</h2><a href="#corridas" class="positive">Ver ganhos</a></div>${table([...selected()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5))}</section><section class="panel"><h2>Olhar para o próximo mês</h2><p class="muted">Provisão estimada para o desgaste do carro.</p><div class="list-row"><span>Reserva sugerida</span><strong>${money(reserve)}</strong></div><div class="list-row"><span>Saldo após provisão</span><strong class="positive">${money(t.net-reserve)}</strong></div><div class="list-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);"><span>🛡️ IPVA & Seguro</span><strong><a href="#investimentos" style="color:var(--green);text-decoration:none;font-weight:750;">${pctIpvaDash}% blindado (${money(ipvaTotalDash)}) ➔</a></strong></div><p class="notice">Estimativa de ${money(state().reservePerKm)} por km. Não movimenta dinheiro e não é uma despesa paga. Ajuste em Veículo.</p></section></div>`;
  }
-function gains(){return `<section class="panel"><div class="panel-head"><div><h2>Seu trabalho registrado</h2><p>Escolha corridas individuais ou um fechamento completo por dia.</p></div><div class="actions"><button class="primary" data-action="daily">Fechar dia</button></div></div><p class="notice">O fechamento soma todos os aplicativos. Para evitar duplicidade, um dia com corridas individuais não aceita fechamento até que esses registros sejam removidos.</p>${table(selected().filter(e=>e.type==='income'))}</section>`;}
+function gains(){return `<section class="panel"><div class="panel-head"><div><h2>Seu trabalho registrado</h2><p>Escolha corridas individuais ou um fechamento completo por dia.</p></div><div class="actions"><button class="primary" data-action="daily">Fechar dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;">📸 Card do Dia</button></div></div><p class="notice">O fechamento soma todos os aplicativos. Para evitar duplicidade, um dia com corridas individuais não aceita fechamento até que esses registros sejam removidos.</p>${table(selected().filter(e=>e.type==='income'))}</section>`;}
 function expenses(){return `<div class="split"><section class="panel"><div class="panel-head"><h2>Despesas do período</h2><button data-action="expense" class="primary">+ Gasto</button></div>${table(selected().filter(e=>e.type==='expense'))}</section><section class="panel"><h2>Despesas por categoria</h2><p class="muted">Valores e participação no período selecionado.</p>${donut()}</section></div>`;}
 function waterfallChart(entries=selected()){
   const income=entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
@@ -214,8 +238,103 @@ function waterfallChart(entries=selected()){
 function vehicle(){const p=state().profile,left=p.serviceAt-p.odometer;
 const ipvaStr = p.ipva ? (new Date(p.ipva) < new Date() ? 'Vencido' : displayDate(p.ipva)) : 'Não definido';
 const segStr = p.seguro ? (new Date(p.seguro) < new Date() ? 'Vencido' : displayDate(p.seguro)) : 'Não definido';
-return `<div class="cards">${card('Veículo',esc(p.vehicle)||'Não informado','Cadastre seu modelo')}${card('Hodômetro',number(p.odometer)+' km','Atualização manual')}${card('Próxima revisão',p.serviceAt?(left<=0?'Revisão pendente':number(left)+' km'):'Não definida',p.serviceAt?'Alvo: '+number(p.serviceAt)+' km':'Defina o alvo',true)}${card('Vencimento IPVA',ipvaStr,'Imposto anual')}${card('Vencimento Seguro',segStr,'Proteção do veículo')}</div><section class="panel"><h2>Planejamento do veículo</h2><p class="muted">Atualize a quilometragem e as datas de vencimento dos documentos.</p><div class="actions"><button data-action="vehicle" class="primary">Editar veículo</button><button data-action="expense">Registrar manutenção</button></div><p class="notice">Reserva atual: ${money(state().reservePerKm)}/km. A provisão é apenas planejamento. IPVA e Manutenções devem ser registrados em Despesas quando pagos.</p><h3>Manutenções registradas no período</h3>${table(selected().filter(e=>e.type==='expense'&&e.category==='Manutenção'))}</section>`;}
-function funds(){const s=state(),eRes=s.funds.filter(f=>f.name==='Reserva de emergência').reduce((a,f)=>a+f.amount,0),fRes=s.funds.filter(f=>f.name==='Férias e 13º').reduce((a,f)=>a+f.amount,0),total=round(s.funds.reduce((a,f)=>a+f.amount,0)),outros=total-eRes-fRes;return `<div class="actions" style="margin-bottom:20px"><button class="primary" data-action="fund">+ Guardar dinheiro</button></div><div class="settings-grid"><section class="panel">${goalPanel('🛡️ Emergência',eRes,s.goals.reserve,'Para imprevistos e dias parados.')}</section><section class="panel">${goalPanel('🏖️ Férias e 13º',fRes,s.goals.reserve>0?s.goals.reserve/2:0,'O seu descanso merecido.')}</section><section class="panel">${goalPanel('📦 Outras Caixinhas',outros,0,'IPVA, Seguro, Pneu novo.')}</section></div><section class="panel" style="margin-top:20px"><h2>Extrato das Caixinhas</h2><p class="muted">Dinheiro separado para os seus objetivos.</p>${s.funds.length?`<div class="table-wrap"><table class="funds-table"><thead><tr><th>Data / Caixinha</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...s.funds].reverse().map(f=>`<tr><td>${displayDate(f.date)}<br><strong>${esc(f.name)}</strong></td><td class="positive">${money(f.amount)}</td><td><button data-fund-edit="${esc(f.id)}">Editar</button> <button data-fund-delete="${esc(f.id)}" class="ghost danger">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhuma caixinha criada','Toque em Guardar dinheiro para começar.')}</section>`;}
+return `<div class="cards">${card('Veículo',esc(p.vehicle)||'Não informado','Cadastre seu modelo')}${card('Hodômetro',number(p.odometer)+' km','Atualização manual')}${card('Próxima revisão',p.serviceAt?(left<=0?'Revisão pendente':number(left)+' km'):'Não definida',p.serviceAt?'Alvo: '+number(p.serviceAt)+' km':'Defina o alvo',true)}${card('Vencimento IPVA',ipvaStr,'Imposto anual')}${card('Vencimento Seguro',segStr,'Proteção do veículo')}</div><section class="panel"><h2>Planejamento do veículo</h2><p class="muted">Atualize a quilometragem e as datas de vencimento dos documentos.</p><div class="actions"><button data-action="vehicle" class="primary">Editar veículo</button><button data-action="expense">Registrar manutenção</button><a href="#calculadora" class="ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:#34d6ac;border-color:#24534f;font-weight:700;">⛽ Comparador na Bomba</a></div><p class="notice">Reserva atual: ${money(state().reservePerKm)}/km. A provisão é apenas planejamento. IPVA e Manutenções devem ser registrados em Despesas quando pagos.</p><h3>Manutenções registradas no período</h3>${table(selected().filter(e=>e.type==='expense'&&e.category==='Manutenção'))}</section>`;}
+function funds(){
+  const s=state();
+  const ipvaRes=s.funds.filter(f=>f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva')||f.name.toLowerCase().includes('seguro')).reduce((a,f)=>a+f.amount,0);
+  const eRes=s.funds.filter(f=>f.name==='Reserva de emergência').reduce((a,f)=>a+f.amount,0);
+  const fRes=s.funds.filter(f=>f.name==='Férias e 13º').reduce((a,f)=>a+f.amount,0);
+  const total=round(s.funds.reduce((a,f)=>a+f.amount,0));
+  const outros=Math.max(0,round(total-ipvaRes-eRes-fRes));
+  const targetIpva=Number(localStorage.getItem('cap_ipva_goal'))||Number(s.profile.ipvaGoal)||2400;
+  const pctIpva=Math.min(100,Math.round((ipvaRes/targetIpva)*100));
+  const offset=157-(157*Math.min(100,pctIpva)/100);
+
+  const heroCard=`
+    <section class="panel ipva-blindada-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;">
+        <div style="max-width:540px;">
+          <span class="tag" style="background:rgba(52,214,172,0.18);color:var(--green);font-weight:800;font-size:11px;letter-spacing:1px;margin-bottom:8px;display:inline-block;">DÉBITO AUTOMÁTICO VIRTUAL</span>
+          <h2 style="font-size:22px;margin:4px 0 6px;color:var(--text);font-weight:800;display:flex;align-items:center;gap:8px;">
+            🛡️ Caixinha Blindada do IPVA & Seguro
+          </h2>
+          <p class="muted" style="margin:0;font-size:13.5px;line-height:1.5;">
+            Chegue em janeiro sem aperto e sem pagar juros de 15% no cartão. Destine 10% a cada fechamento diário e blinde seus impostos.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="primary" data-action="fund" style="white-space:nowrap;padding:10px 16px;">+ Guardar Dinheiro</button>
+          <button class="ghost" onclick="window.configIpvaGoal()" style="white-space:nowrap;padding:10px 14px;font-size:13px;" title="Clique para alterar a meta anual">⚙️ Meta: ${money(targetIpva)}</button>
+        </div>
+      </div>
+
+      <div class="ipva-hero-grid">
+        <!-- SVG Velocímetro -->
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;width:180px;">
+          <svg viewBox="0 0 120 70" style="width:180px;height:105px;overflow:visible;">
+            <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="11" stroke-linecap="round" />
+            <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="url(#ipvaGaugeGrad)" stroke-width="11" stroke-linecap="round"
+              stroke-dasharray="157" stroke-dashoffset="${offset.toFixed(1)}" style="transition: stroke-dashoffset 0.8s ease;" />
+            <defs>
+              <linearGradient id="ipvaGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#34d6ac" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div style="position:absolute;bottom:12px;text-align:center;">
+            <span style="font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--green);line-height:1;display:block;">
+              ${pctIpva}%
+            </span>
+            <span style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">
+              GARANTIDO
+            </span>
+          </div>
+        </div>
+
+        <!-- Estatísticas da Proteção -->
+        <div style="width:100%;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;">
+            <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+              <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Blindado no Cofre</small>
+              <strong style="font-size:20px;color:var(--green);font-family:'JetBrains Mono',monospace;">${secretMoney(ipvaRes)}</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+              <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Meta Anual Estimada</small>
+              <strong style="font-size:20px;color:var(--text);font-family:'JetBrains Mono',monospace;">${money(targetIpva)}</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+              <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Falta Guardar</small>
+              <strong style="font-size:20px;color:${targetIpva-ipvaRes<=0?'var(--green)':'#f87171'};font-family:'JetBrains Mono',monospace;">
+                ${targetIpva-ipvaRes<=0?'Quitado! 🏆':secretMoney(targetIpva-ipvaRes)}
+              </strong>
+            </div>
+          </div>
+
+          <div style="background:rgba(52,214,172,0.08);border:1px solid rgba(52,214,172,0.25);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);">
+            ${pctIpva>=100 
+              ? '🔥 <strong>IPVA e Seguro 100% blindados!</strong> Seu início de ano está garantido sem dívidas nem aperto.'
+              : `🛡️ <strong>${pctIpva}% do seu IPVA e Seguro garantido!</strong> Cada fechamento diário com débito virtual de 10% aproxima você da meta.`}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+
+  return `
+    ${heroCard}
+    <div class="settings-grid">
+      <section class="panel">${goalPanel('🛡️ Reserva de Emergência',eRes,s.goals.reserve,'Para imprevistos mecânicos e dias parados.')}</section>
+      <section class="panel">${goalPanel('🏖️ Férias e 13º',fRes,s.goals.reserve>0?s.goals.reserve/2:0,'O seu descanso merecido.')}</section>
+      <section class="panel">${goalPanel('📦 Outras Caixinhas',outros,0,'Pneus novos, acessórios e extras.')}</section>
+    </div>
+    <section class="panel" style="margin-top:20px">
+      <h2>Extrato das Caixinhas</h2>
+      <p class="muted">Dinheiro separado para os seus objetivos e proteção anual.</p>
+      ${s.funds.length?`<div class="table-wrap"><table class="funds-table"><thead><tr><th>Data / Caixinha</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...s.funds].reverse().map(f=>`<tr><td>${displayDate(f.date)}<br><strong>${esc(f.name)}</strong>${(f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva'))?' <span class="tag" style="background:rgba(52,214,172,0.2);color:#34d6ac;font-size:10px;padding:2px 6px;">🛡️ BLINDADA</span>':''}</td><td class="positive">${secretMoney(f.amount)}</td><td><button data-fund-edit="${esc(f.id)}">Editar</button> <button data-fund-delete="${esc(f.id)}" class="ghost danger">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhuma caixinha criada','Toque em Guardar dinheiro para começar.')}
+    </section>
+  `;
+}
 function reports(){
   const es=selected(),t=totals(es),by=Object.create(null);
   es.filter(e=>e.type==='income').forEach(e=>{if(e.mode==='daily'&&e.breakdown)Object.entries(e.breakdown).forEach(([k,v])=>by[k]=(by[k]||0)+v);else by[e.app]=(by[e.app]||0)+e.amount;});
@@ -318,35 +437,156 @@ window.salvarChavePix = async () => {
     alert(err.message || 'Erro ao salvar chave Pix.');
   }
 };
+window.configIpvaGoal = () => {
+  const current = localStorage.getItem('cap_ipva_goal') || state().profile.ipvaGoal || '2400';
+  const val = prompt('Qual o valor total estimado do seu IPVA + Seguro para o próximo ano? (R$)', current);
+  if (val !== null) {
+    const num = parseFloat(val.replace(',', '.'));
+    if (num > 0) {
+      localStorage.setItem('cap_ipva_goal', num);
+      mutate(s => {
+        s.profile.ipvaGoal = num;
+      }, `Meta do IPVA & Seguro definida para ${money(num)}!`);
+    }
+  }
+};
 function calculadora(){
+  setTimeout(() => { window.runCalc?.(); window.runFuelCompare?.(); }, 50);
   return `<div class="split">
+    <!-- Bloco 1: Simulador de Corrida (Raio-X) -->
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Simulador de Corrida</h2><p>Digite os dados da corrida oferecida na tela do app</p></div>
+        <div><h2>🚗 Simulador de Corrida</h2><p>Avalie a corrida da Uber/99 em 5 segundos antes de aceitar</p></div>
+        <span class="tag">RAIO-X</span>
       </div>
       <div class="form-grid">
-        ${input('calcVal','Valor da Corrida (R$)','','number','step="0.01" oninput="runCalc()" inputmode="decimal"')}
-        ${input('calcKm','Distância Total (KM)','','number','step="0.1" oninput="runCalc()" inputmode="decimal"')}
-        ${input('calcMin','Tempo Estimado (Minutos)','','number','step="1" oninput="runCalc()" inputmode="numeric"')}
-        ${input('calcGas','Preço do Combustível (R$/L)',localStorage.getItem('cap_gas_price')||'5.80','number','step="0.01" oninput="runCalc()" inputmode="decimal"')}
+        ${input('calcVal','Valor da Corrida (R$)','','number','step="0.01" oninput="runCalc()" inputmode="decimal" placeholder="Ex: 24.50"')}
+        ${input('calcKm','Distância Total (KM)','','number','step="0.1" oninput="runCalc()" inputmode="decimal" placeholder="Ex: 8.5"')}
+        ${input('calcMin','Tempo Estimado (Minutos)','','number','step="1" oninput="runCalc()" inputmode="numeric" placeholder="Ex: 20"')}
+        ${input('calcGas','Preço Combustível (R$/L)',localStorage.getItem('cap_gas_price')||'5.80','number','step="0.01" oninput="runCalc()" inputmode="decimal"')}
+        ${input('calcCons','Autonomia do Carro (km/L)',localStorage.getItem('cap_calc_cons')||state().profile.consumption||'10.0','number','step="0.1" oninput="runCalc()" inputmode="decimal" placeholder="Ex: 10.0"')}
       </div>
-      <p class="notice full">Dica: Use para avaliar rapidamente viagens longas ou dinâmicas.</p>
+      <div id="calcResults" style="margin-top:16px;">
+        <div class="empty" style="padding:20px 10px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--muted);opacity:0.3;margin-bottom:10px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <strong>Aguardando dados...</strong>
+          <p>Preencha os valores para ver o veredito.</p>
+        </div>
+      </div>
     </section>
-    <section class="panel" id="calcResults">
-      <div class="empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--muted);opacity:0.3;margin-bottom:16px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-        <strong>Aguardando dados...</strong>
-        <p>Preencha os campos para ver o raio-x do lucro e o veredito.</p>
+
+    <!-- Bloco 2: Comparador na Bomba (Item 7) -->
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>⛽ Bomba: Etanol x Gasolina x GNV</h2><p>Descubra no posto qual combustível dá mais lucro</p></div>
+        <span class="tag" style="background:rgba(52,214,172,0.18);color:#34d6ac;font-weight:800;">ECONOMIA</span>
+      </div>
+      <div class="form-grid">
+        ${input('fuelGasPrice','Gasolina na Bomba (R$/L)',localStorage.getItem('cap_pump_gas')||'5.89','number','step="0.01" oninput="runFuelCompare()" inputmode="decimal"')}
+        ${input('fuelEthPrice','Etanol na Bomba (R$/L)',localStorage.getItem('cap_pump_eth')||'3.89','number','step="0.01" oninput="runFuelCompare()" inputmode="decimal"')}
+        ${input('fuelGasKm','Consumo Gasolina (km/L)',state().profile.consumption||'10.0','number','step="0.1" oninput="runFuelCompare()" inputmode="decimal"')}
+        ${input('fuelEthKm','Consumo Etanol (km/L)',(Math.round((state().profile.consumption||10)*0.7*10)/10).toFixed(1),'number','step="0.1" oninput="runFuelCompare()" inputmode="decimal"')}
+        ${input('fuelTank','Capacidade do Tanque (L)','50','number','step="1" oninput="runFuelCompare()" inputmode="numeric"')}
+        ${input('fuelGnvPrice','GNV R$/m³ (Opcional)',localStorage.getItem('cap_pump_gnv')||'','number','step="0.01" oninput="runFuelCompare()" inputmode="decimal" placeholder="Opcional"')}
+      </div>
+      <div id="fuelResults" style="margin-top:16px;">
+        <div class="empty" style="padding:20px 10px;">
+          <strong>Calculando paridade...</strong>
+        </div>
       </div>
     </section>
   </div>`;
 }
+
+window.runFuelCompare = () => {
+  const getV = n => parseFloat($('input[name="'+n+'"]')?.value.replace(',','.')) || 0;
+  const pGas = getV('fuelGasPrice');
+  const pEth = getV('fuelEthPrice');
+  const cGas = getV('fuelGasKm') || 10;
+  const cEth = getV('fuelEthKm') || 7;
+  const tank = getV('fuelTank') || 50;
+  const pGnv = getV('fuelGnvPrice');
+
+  if (pGas) localStorage.setItem('cap_pump_gas', pGas);
+  if (pEth) localStorage.setItem('cap_pump_eth', pEth);
+  if (pGnv) localStorage.setItem('cap_pump_gnv', pGnv);
+
+  const container = document.getElementById('fuelResults');
+  if (!container) return;
+
+  if (!pGas || !pEth) {
+    container.innerHTML = `
+      <div class="empty" style="padding:20px 10px;">
+        <strong>Preencha os preços da bomba</strong>
+        <p>Informe o valor da Gasolina e do Etanol para comparar.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const costGasKm = pGas / cGas;
+  const costEthKm = pEth / cEth;
+  const ratio = (pEth / pGas) * 100;
+  const carParity = (cEth / cGas) * 100;
+  const ethWins = costEthKm < costGasKm;
+  const diffPerKm = Math.abs(costGasKm - costEthKm);
+  const savingsTank = ethWins ? diffPerKm * (tank * cEth) : diffPerKm * (tank * cGas);
+
+  let gnvText = '';
+  if (pGnv > 0) {
+    const cGnv = cGas * 1.35;
+    const costGnvKm = pGnv / cGnv;
+    gnvText = `
+      <div class="list-row" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);">
+        <span>Custo por KM no GNV</span>
+        <strong style="color:#38bdf8;">${money(costGnvKm)}/km <small>(~${number(cGnv)} km/m³)</small></strong>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <div class="fuel-veredito ${ethWins ? 'eth-wins' : 'gas-wins'}">
+      <div class="fuel-veredito-tag">VEREDITO DA INTELIGÊNCIA</div>
+      <strong class="fuel-veredito-title">
+        ${ethWins ? '🟢 ABASTEÇA COM ETANOL!' : '🔵 ABASTEÇA COM GASOLINA!'}
+      </strong>
+      <span class="fuel-veredito-sub">
+        Economia de <strong>${money(savingsTank)}</strong> em um tanque cheio (${tank}L)
+      </span>
+    </div>
+
+    <div class="list-row">
+      <span>Custo por KM no Etanol</span>
+      <strong class="${ethWins?'positive':''}">${money(costEthKm)}/km</strong>
+    </div>
+    <div class="list-row">
+      <span>Custo por KM na Gasolina</span>
+      <strong class="${!ethWins?'positive':''}">${money(costGasKm)}/km</strong>
+    </div>
+    <div class="list-row">
+      <span>Relação de Preço (Bomba)</span>
+      <div style="text-align:right;">
+        <strong>${ratio.toFixed(1)}%</strong>
+        <small style="display:block;font-size:11px;color:var(--muted);">(Paridade: ${carParity.toFixed(1)}%)</small>
+      </div>
+    </div>
+    ${gnvText}
+
+    <p class="notice" style="margin-top:14px;font-size:12px;">
+      ${ethWins 
+        ? `Neste posto, o Etanol custa ${ratio.toFixed(1)}% da Gasolina (abaixo dos ${carParity.toFixed(1)}% do seu motor), gerando ${money(diffPerKm)} de lucro extra a cada km rodado.`
+        : `Neste posto, a Gasolina rende mais quilômetros por real no seu motor.`}
+    </p>
+  `;
+};
+
 window.runCalc=()=>{
   const getV=n=>parseFloat($('input[name="'+n+'"]')?.value.replace(',','.'))||0;
-  const v=getV('calcVal'),km=getV('calcKm'),min=getV('calcMin'),gas=getV('calcGas');
-  if(!v||!km)return;
+  const v=getV('calcVal'),km=getV('calcKm'),min=getV('calcMin'),gas=getV('calcGas'),cons=getV('calcCons');
   if(gas)localStorage.setItem('cap_gas_price',gas);
-  const p=state().profile,consumption=p.consumption||10,reserve=state().reservePerKm||0.15;
+  if(cons)localStorage.setItem('cap_calc_cons',cons);
+  if(!v||!km)return;
+  const p=state().profile,consumption=cons||p.consumption||10,reserve=state().reservePerKm||0.15;
   const costGas=(km/consumption)*gas,costReserve=km*reserve,totalCost=costGas+costReserve;
   const net=v-totalCost,perKm=v/km,netPerKm=net/km,netPerHour=min?(net/(min/60)):0;
   let verdict='',vColor='';
@@ -371,7 +611,7 @@ window.runCalc=()=>{
     <div class="list-row" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
        <span style="font-size:16px;">Lucro Limpo no Bolso</span><strong style="font-size:24px;color:${net>0?'var(--green)':'#ffb1a7'}">${money(net)}</strong>
     </div>
-    <p class="notice" style="margin-top:16px;font-size:12.5px;">Cálculo baseado no seu veículo cadastrado fazendo ${number(consumption)} km/L e poupando ${money(reserve)} por km para manutenção.</p>
+    <p class="notice" style="margin-top:16px;font-size:12.5px;">Cálculo baseado no seu veículo fazendo ${number(consumption)} km/L e poupando ${money(reserve)} por km para manutenção.</p>
   `;
 };
 function render(){chartInitializers=[];if(window.Chart){const isLight=document.documentElement.classList.contains('light-theme');Chart.defaults.color=isLight?'#475569':'#94a3b8';Chart.defaults.borderColor=isLight?'rgba(0,0,0,0.1)':'rgba(255,255,255,0.05)';}const page=paths[route]||paths.dashboard;$('#pageTitle').textContent=page[0];$('#subtitle').textContent=page[1];const hr=new Date().getHours();const salutation=hr<12?'BOM DIA':hr<18?'BOA TARDE':'BOA NOITE';$('#greeting').textContent=state().profile.name?`${salutation}, ${state().profile.name.toLocaleUpperCase('pt-BR')}`:'CONTROLE FINANCEIRO';$('#demoBanner').hidden=!demo;$('#demoBtn').textContent=demo?'Sair da demonstração':'Ver demonstração';$('.toolbar').hidden=['veiculo','metas','perfil','investimentos','calculadora'].includes(route);$('#customDates').hidden=period!=='custom';const b=bounds();$('#periodLabel').textContent=period==='all'?'Todo o histórico':`${displayDate(b[0])} a ${displayDate(b[1])}`;$('nav').innerHTML=Object.entries(paths).map(([key,v])=>`<a href="#${key}" class="${key===route?'active':''}" ${key===route?'aria-current="page"':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${v[2]}"/></svg>${({dashboard:'Visão geral',corridas:'Ganhos',gastos:'Despesas',calculadora:'Calculadora',veiculo:'Veículo',investimentos:'Reservas',relatorios:'Relatórios',metas:'Metas',perfil:'Perfil e backup'})[key]}</a>`).join('');document.querySelectorAll('.mobile-nav-item[data-tab]').forEach(a=>{a.classList.toggle('active',a.dataset.tab===route);});renderSafety();$('#content').innerHTML=({dashboard,corridas:gains,gastos:expenses,calculadora,veiculo:vehicle,investimentos:funds,relatorios:reports,metas:goals,perfil:profile}[route]||dashboard)();chartInitializers.forEach(init=>init());const hasToday=state().entries.some(e=>e.date===dateKey());$('#mobileQuickAdd')?.classList.toggle('pulse',!hasToday);}
@@ -379,22 +619,39 @@ function input(name,label,value='',type='text',extra=''){return `<label>${label}
 function select(name,label,options,value){return `<label>${label}<select name="${name}">${options.map(o=>`<option ${o===value?'selected':''}>${esc(o)}</option>`).join('')}</select></label>`;}
 const categories=['Combustível','Alimentação','Manutenção','Seguro','Aluguel do veículo','Parcela do veículo','Celular','Pedágio','Estacionamento','Impostos e taxas','Outros'];
 function openForm(type,id){const s=state(),e=s.entries.find(e=>e.id===id)||s.funds.find(e=>e.id===id)||{};formContext={type,id};dirty=false;let title='',fields='';const date=input('date','Data',e.date||dateKey(),'date',`required min="2000-01-01" max="${dateKey()}"`);const amount=input('amount','Valor (R$)',e.amount??'','number','required min="0.01" step="0.01" max="10000000" inputmode="decimal"');if(type==='income'){title=id?'Editar corrida':'Registrar corrida';const ocrBtn='<div class="full" style="margin-bottom:12px"><button type="button" data-action="ocr" style="width:100%;background:rgba(52, 214, 172, 0.1);color:var(--primary);border:1px dashed var(--primary);font-weight:bold;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;margin-right:6px;vertical-align:-4px;"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z"/><circle cx="12" cy="13" r="4"/></svg> Ler Print (Auto-preencher Valor)</button></div>';const quickIncome = `<div class="full" style="display:flex;gap:8px;margin-bottom:6px;margin-top:-6px;overflow-x:auto;padding-bottom:4px;"><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='10.00'">R$ 10</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='15.00'">R$ 15</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='20.00'">R$ 20</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='30.00'">R$ 30</button></div>`;fields=ocrBtn+date+select('app','Aplicativo',['Uber','99','inDrive','Particular','Outros'],e.app)+amount+quickIncome+input('km','Quilômetros registrados (Opcional)',e.km??'','number','min="0" step="0.1" max="100000" inputmode="decimal"')+input('minutes','Tempo (Minutos) (Opcional)',e.hours?round(e.hours*60):'','number','min="0" max="1440" step="1" inputmode="numeric"')+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Para incluir espera e todos os deslocamentos no resultado por hora/km, prefira o fechamento diário.</p>';}
-if(type==='daily'){title=id?'Editar fechamento':'Fechar dia';fields=date+input('count','Quantidade de corridas',e.count??'','number','required min="0" step="1" max="10000" inputmode="numeric"')+['Uber','99','inDrive','Particular','Outros'].map((app,i)=>input('app'+i,app+' (R$)',e.breakdown?.[app]??(app==='Outros'&&e.mode==='daily'&&!e.breakdown?e.amount:0),'number','required min="0" step="0.01" max="10000000" inputmode="decimal"')).join('')+input('km','KM totais do trabalho',e.km??'','number','required min="0" step="0.1" max="100000" inputmode="decimal"')+input('hours','Horas totais (ex: 8.5 para 8h30)',e.hours??'','number','required min="0" step="0.1" max="24" inputmode="decimal"')+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Inclua espera e km sem passageiro. Lance despesas separadamente em Despesas. O valor recebido deve ser o repasse ao motorista, sem descontar a taxa do aplicativo novamente.</p>';}
+if(type==='daily'){
+  title=id?'Editar fechamento':'Fechar dia';
+  const autoIpvaField = `
+    <div class="full" style="background:linear-gradient(135deg,rgba(52,214,172,0.1),rgba(15,35,55,0.7)); border:1.5px solid rgba(52,214,172,0.35); border-radius:14px; padding:14px 16px; margin:6px 0;">
+      <label style="display:flex; align-items:center; gap:12px; cursor:pointer; font-weight:750; color:var(--text); margin:0;">
+        <input type="checkbox" name="autoIpva" value="1" style="width:22px; height:22px; accent-color:var(--green); cursor:pointer;" checked>
+        <span style="font-size:14.5px;">🛡️ Blindar IPVA & Seguro: Destinar 10% para a Caixinha</span>
+      </label>
+      <small style="color:var(--muted); display:block; margin-top:5px; margin-left:34px; font-size:12px; line-height:1.45;">
+        Cria um débito virtual automático de 10% do faturamento de hoje na sua Caixinha Blindada do IPVA para chegar em janeiro com tudo pago sem juros no cartão.
+      </small>
+    </div>
+  `;
+  fields=date+input('count','Quantidade de corridas',e.count??'','number','required min="0" step="1" max="10000" inputmode="numeric"')+['Uber','99','inDrive','Particular','Outros'].map((app,i)=>input('app'+i,app+' (R$)',e.breakdown?.[app]??(app==='Outros'&&e.mode==='daily'&&!e.breakdown?e.amount:0),'number','required min="0" step="0.01" max="10000000" inputmode="decimal"')).join('')+input('km','KM totais do trabalho',e.km??'','number','required min="0" step="0.1" max="100000" inputmode="decimal"')+input('hours','Horas totais (ex: 8.5 para 8h30)',e.hours??'','number','required min="0" step="0.1" max="24" inputmode="decimal"')+autoIpvaField+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Inclua espera e km sem passageiro. Lance despesas separadamente em Despesas. O valor recebido deve ser o repasse ao motorista, sem descontar a taxa do aplicativo novamente.</p>';
+}
 if(type==='expense'){title=id?'Editar despesa':'Registrar despesa';const quickExpense = `<div class="full" style="display:flex;gap:8px;margin-bottom:6px;margin-top:-6px;overflow-x:auto;padding-bottom:4px;"><button type="button" class="ghost" style="padding:6px 12px;font-size:13px;white-space:nowrap" onclick="document.querySelector('select[name=category]').value='Combustível';document.querySelector('input[name=amount]').value='50.00'">⛽ R$ 50</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px;white-space:nowrap" onclick="document.querySelector('select[name=category]').value='Combustível';document.querySelector('input[name=amount]').value='100.00'">⛽ R$ 100</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px;white-space:nowrap" onclick="document.querySelector('select[name=category]').value='Alimentação';document.querySelector('input[name=amount]').value='25.00'">🍔 R$ 25</button></div>`;fields=date+select('category','Categoria',categories,e.category)+amount+quickExpense+input('description','Descrição (opcional)',e.description||'','text','maxlength="160"');}
-if(type==='fund'){title=id?'Editar aporte':'Registrar aporte';fields=date+'<label>Caixinha / Objetivo<input name="name" list="fundOpts" value="'+esc(e.name||'Reserva de emergência')+'" required maxlength="100"><datalist id="fundOpts"><option value="Reserva de emergência"></option><option value="Férias e 13º"></option></datalist></label>'+amount;}
+if(type==='fund'){title=id?'Editar aporte':'Registrar aporte';fields=date+'<label>Caixinha / Objetivo<input name="name" list="fundOpts" value="'+esc(e.name||'IPVA e Seguro')+'" required maxlength="100"><datalist id="fundOpts"><option value="IPVA e Seguro"></option><option value="Reserva de emergência"></option><option value="Férias e 13º"></option><option value="Manutenção do Carro"></option></datalist></label>'+amount;}
 if(type==='vehicle'){title='Configurar veículo';fields=input('vehicle','Modelo',s.profile.vehicle,'text','required maxlength="100"')+input('odometer','Hodômetro atual (km)',s.profile.odometer,'number','required min="0" max="10000000" step="1" inputmode="numeric"')+input('serviceAt','Próxima revisão: hodômetro-alvo',s.profile.serviceAt,'number','required min="0" max="10000000" step="1" inputmode="numeric"')+input('consumption','Consumo informado (km/L)',s.profile.consumption,'number','required min="0" max="100" step="0.1" inputmode="decimal"')+input('reservePerKm','Reserva sugerida por km (R$)',s.reservePerKm,'number','required min="0" max="100" step="0.01" inputmode="decimal"')+input('ipva','Data Venc. IPVA (Opcional)',s.profile.ipva||'','date','')+input('seguro','Data Venc. Seguro (Opcional)',s.profile.seguro||'','date','')+'<p class="notice full">Deixe em branco as datas que não deseja acompanhar.</p>';}
 if(type==='goals'){title='Editar metas';fields=input('daily','Saldo diário desejado (R$)',s.goals.daily,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"')+input('monthly','Saldo mensal desejado (R$)',s.goals.monthly,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"')+input('reserve','Objetivo de reserva (R$)',s.goals.reserve,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"');}
 if(type==='profile'){title='Seu nome';fields=input('name','Como você prefere ser chamado?',s.profile.name,'text','required maxlength="60"');}
 $('#modalTitle').textContent=title;$('#fields').innerHTML=`<div class="form-grid">${fields}</div>`;$('#formError').textContent='';$('#modal').showModal();}
-async function saveForm(ev){ev.preventDefault();if(saving)return;const f=Object.fromEntries(new FormData(ev.target)),{type,id}=formContext,s=state(),n=k=>Number(f[k]);let e;if(['income','daily','expense','fund'].includes(type)&&(!validDate(f.date)||f.date>dateKey()))return formError('Informe uma data válida, até hoje.');if(type==='income'||type==='daily'){const conflicts=s.entries.filter(e=>e.id!==id&&e.type==='income'&&e.date===f.date);if(conflicts.some(e=>e.mode==='daily')||(type==='daily'&&conflicts.length))return formError('Já existem ganhos neste dia. Edite o fechamento existente ou remova as corridas antes de criar um fechamento.');let breakdown;let amount=n('amount');if(type==='daily'){breakdown={};['Uber','99','inDrive','Particular','Outros'].forEach((app,i)=>breakdown[app]=n('app'+i));amount=round(Object.values(breakdown).reduce((a,b)=>a+b,0));}if(!finite(amount,.01))return formError('Informe pelo menos um ganho maior que zero.');const hours=type==='daily'?n('hours'):n('minutes')/60;if(hours+conflicts.reduce((sum,e)=>sum+e.hours,0)>24)return formError('O tempo total registrado neste dia não pode ultrapassar 24 horas.');e={id:id||uid(),type:'income',mode:type==='daily'?'daily':'ride',date:f.date,app:type==='daily'?'Todos':f.app,amount:round(amount),km:n('km'),hours,count:type==='daily'?n('count'):1,description:f.description.trim(),...(breakdown?{breakdown}:{})};}
+async function saveForm(ev){ev.preventDefault();if(saving)return;const f=Object.fromEntries(new FormData(ev.target)),{type,id}=formContext,s=state(),n=k=>Number(f[k]);let e;if(['income','daily','expense','fund'].includes(type)&&(!validDate(f.date)||f.date>dateKey()))return formError('Informe uma data válida, até hoje.');
+let ipvaAutoAmount=0;
+if(type==='income'||type==='daily'){const conflicts=s.entries.filter(e=>e.id!==id&&e.type==='income'&&e.date===f.date);if(conflicts.some(e=>e.mode==='daily')||(type==='daily'&&conflicts.length))return formError('Já existem ganhos neste dia. Edite o fechamento existente ou remova as corridas antes de criar um fechamento.');let breakdown;let amount=n('amount');if(type==='daily'){breakdown={};['Uber','99','inDrive','Particular','Outros'].forEach((app,i)=>breakdown[app]=n('app'+i));amount=round(Object.values(breakdown).reduce((a,b)=>a+b,0));if(f.autoIpva&&amount>0)ipvaAutoAmount=round(amount*0.10);}if(!finite(amount,.01))return formError('Informe pelo menos um ganho maior que zero.');const hours=type==='daily'?n('hours'):n('minutes')/60;if(hours+conflicts.reduce((sum,e)=>sum+e.hours,0)>24)return formError('O tempo total registrado neste dia não pode ultrapassar 24 horas.');e={id:id||uid(),type:'income',mode:type==='daily'?'daily':'ride',date:f.date,app:type==='daily'?'Todos':f.app,amount:round(amount),km:n('km'),hours,count:type==='daily'?n('count'):1,description:f.description.trim(),...(breakdown?{breakdown}:{})};}
 if(type==='expense')e={id:id||uid(),type:'expense',date:f.date,amount:round(n('amount')),category:f.category,description:f.description.trim()};
 const next=JSON.parse(JSON.stringify(s));if(e){const i=next.entries.findIndex(x=>x.id===id);if(i<0)next.entries.push(e);else next.entries[i]=e;}
+if(type==='daily'&&ipvaAutoAmount>=1){const fIdx=next.funds.findIndex(x=>x.date===f.date&&(x.name==='IPVA e Seguro'||x.name==='🛡️ IPVA & Seguro'));if(fIdx>=0)next.funds[fIdx].amount=ipvaAutoAmount;else next.funds.push({id:uid(),date:f.date,name:'IPVA e Seguro',amount:ipvaAutoAmount});}
 if(type==='fund'){const fund={id:id||uid(),date:f.date,name:f.name.trim(),amount:round(n('amount'))};if(!fund.name)return formError('Informe o objetivo do aporte.');const i=next.funds.findIndex(x=>x.id===id);if(i<0)next.funds.push(fund);else next.funds[i]=fund;}
 if(type==='vehicle'){next.profile={...next.profile,vehicle:f.vehicle.trim(),odometer:n('odometer'),serviceAt:n('serviceAt'),consumption:n('consumption'),ipva:f.ipva||'',seguro:f.seguro||''};next.reservePerKm=n('reservePerKm');}
 if(type==='goals')next.goals={daily:n('daily'),monthly:n('monthly'),reserve:n('reserve')};
 if(type==='profile'){if(!f.name.trim())return formError('Informe seu nome.');next.profile.name=f.name.trim();}
 if(!validBackup(next))return formError('Confira os valores informados. Não foi possível salvar.');
-const successMsg = type === 'income' ? 'Ganho salvo com sucesso!' : type === 'expense' ? 'Despesa salva com sucesso!' : 'Registro salvo com sucesso!';
+const successMsg = (type==='daily'&&ipvaAutoAmount>0)?`Fechamento salvo! 🛡️ ${money(ipvaAutoAmount)} guardados no IPVA & Seguro!`:(type === 'income' ? 'Ganho salvo com sucesso!' : type === 'expense' ? 'Despesa salva com sucesso!' : 'Registro salvo com sucesso!');
 if(await commit(next,demo?'Salvo na demonstração.':successMsg)){dirty=false;$('#modal').close();}
 }
 function formError(msg){$('#formError').textContent=msg;}
@@ -459,6 +716,207 @@ async function recoverPrevious(){
  if(!confirm('Recuperar a versão anterior? A versão atual será preservada como cópia anterior.'))return;
  await commit(cloudPrevious,'Versão anterior recuperada.',true);
 }
+window.gerarCardWhatsApp = function(targetDate) {
+  const date = targetDate || dateKey();
+  const entries = state().entries.filter(e => e.date === date);
+  const t = totals(entries);
+  const goal = state().goals.daily || 300;
+  const pctGoal = goal > 0 ? Math.round((t.net / goal) * 100) : 100;
+  const d = new Date(date + 'T12:00:00');
+  const weekDay = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+  const weekDayCap = weekDay.charAt(0).toUpperCase() + weekDay.slice(1);
+  const dateFormatted = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const netKmStr = t.km ? money(t.net / t.km) + '/km' : '—';
+  const netHrStr = t.hours ? money(t.net / t.hours) + '/h' : '—';
+  const shareText = `🚗 *FECHAMENTO DO EXPEDIENTE • CAPITALEX DRIVER*\n📅 ${weekDayCap}, ${dateFormatted}\n\n💰 *Lucro Líquido Real:* ${money(t.net)}\n🟢 *Ganhos Brutos:* ${money(t.income)} (${t.count} corrida${t.count===1?'':'s'})\n🔴 *Despesas Pagas:* ${money(t.expense)}\n⚡ *Rendimento por KM:* ${netKmStr} (${number(t.km)} km)\n⏱️ *Rendimento por Hora:* ${netHrStr} (${number(t.hours)} h)\n🎯 *Meta do Dia:* ${pctGoal}% ${t.net >= goal ? 'BATIDA! 🔥' : 'concluída'}\n\nControle seus lucros no *Capitalex Driver*\n👉 https://capitalexdriver.com`;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1080;
+  const ctx = canvas.getContext('2d');
+
+  const rRect = (x, y, w, h, r) => {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else ctx.rect(x, y, w, h);
+  };
+
+  const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
+  bgGrad.addColorStop(0, '#061320');
+  bgGrad.addColorStop(0.5, '#0a1d30');
+  bgGrad.addColorStop(1, '#05121c');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 1080, 1080);
+
+  const glow = ctx.createRadialGradient(540, 260, 20, 540, 260, 500);
+  glow.addColorStop(0, 'rgba(52, 214, 172, 0.16)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 1080, 1080);
+
+  ctx.strokeStyle = '#1a3754';
+  ctx.lineWidth = 4;
+  rRect(40, 40, 1000, 1000, 32);
+  ctx.stroke();
+
+  ctx.fillStyle = '#34d6ac';
+  ctx.font = '800 32px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('CAPITALEX DRIVER', 80, 110);
+
+  ctx.fillStyle = '#849fb8';
+  ctx.font = '600 16px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('SEU TRABALHO • SEUS RESULTADOS REAIS', 80, 140);
+
+  ctx.fillStyle = 'rgba(52, 214, 172, 0.16)';
+  rRect(700, 75, 300, 48, 24);
+  ctx.fill();
+  ctx.strokeStyle = '#34d6ac';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#34d6ac';
+  ctx.font = '800 17px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚡ FECHAMENTO DO DIA', 850, 106);
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(`${weekDayCap.toUpperCase()} • ${dateFormatted}`, 80, 200);
+
+  ctx.fillStyle = 'rgba(12, 29, 46, 0.88)';
+  rRect(80, 230, 920, 240, 24);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(52, 214, 172, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '700 18px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('LUCRO LÍQUIDO REAL DO EXPEDIENTE', 120, 280);
+
+  ctx.fillStyle = t.net >= 0 ? '#34d6ac' : '#ffb1a7';
+  ctx.font = '800 68px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(money(t.net), 120, 365);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '500 17px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('Ganhos brutos menos combustível e despesas pagas', 120, 415);
+
+  const drawCard = (x, y, w, h, icon, label, val, sub, valCol) => {
+    ctx.fillStyle = 'rgba(10, 23, 38, 0.78)';
+    rRect(x, y, w, h, 18);
+    ctx.fill();
+    ctx.strokeStyle = '#1d3a57';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#849fb8';
+    ctx.font = '700 16px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(`${icon} ${label}`, x + 24, y + 42);
+
+    ctx.fillStyle = valCol;
+    ctx.font = '800 34px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(val, x + 24, y + 92);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '500 15px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(sub, x + 24, y + 130);
+  };
+
+  drawCard(80, 500, 445, 160, '🟢', 'GANHOS BRUTOS', money(t.income), `${t.count} corrida${t.count===1?'':'s'} registrada${t.count===1?'':'s'}`, '#38bdf8');
+  drawCard(555, 500, 445, 160, '🔴', 'DESPESAS PAGAS', money(t.expense), 'Combustível e gastos do dia', '#fb923c');
+  drawCard(80, 685, 445, 160, '⚡', 'RENDIMENTO / KM', netKmStr, `${number(t.km)} km rodados`, '#34d6ac');
+  drawCard(555, 685, 445, 160, '⏱️', 'RENDIMENTO / HORA', netHrStr, `${number(t.hours)} h trabalhadas`, '#34d6ac');
+
+  ctx.fillStyle = pctGoal >= 100 ? 'rgba(52, 214, 172, 0.16)' : 'rgba(56, 189, 248, 0.12)';
+  rRect(80, 875, 920, 65, 16);
+  ctx.fill();
+  ctx.strokeStyle = pctGoal >= 100 ? '#34d6ac' : '#38bdf8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = pctGoal >= 100 ? '#34d6ac' : '#38bdf8';
+  ctx.font = '800 20px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(`🎯 META DO DIA: ${money(goal)}  •  ${pctGoal}% ${pctGoal >= 100 ? 'ALCANÇADA COM SUCESSO! 🔥' : 'CONCLUÍDA'}`, 110, 916);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '600 17px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('capitalexdriver.com • Pare de adivinhar o seu lucro.', 80, 995);
+
+  ctx.fillStyle = '#34d6ac';
+  ctx.font = '700 17px -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('Baixe o app no celular 📱', 1000, 995);
+  ctx.textAlign = 'left';
+
+  const dataUrl = canvas.toDataURL('image/png');
+  const previewBox = document.getElementById('sharePreviewContainer');
+  if (previewBox) {
+    previewBox.innerHTML = `
+      <img src="${dataUrl}" alt="Cartão do Dia" style="border:1px solid #1e3d5b;">
+    `;
+  }
+
+  const btnShare = document.getElementById('btnShareWhatsAppAction');
+  const btnDownload = document.getElementById('btnDownloadCardAction');
+  const btnCopy = document.getElementById('btnCopyTextAction');
+
+  canvas.toBlob(blob => {
+    if (btnDownload) {
+      btnDownload.onclick = () => {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `fechamento-capitalex-${date}.png`;
+        a.click();
+      };
+    }
+
+    if (btnShare) {
+      btnShare.onclick = async () => {
+        if (blob && navigator.canShare) {
+          const file = new File([blob], `fechamento-${date}.png`, { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: 'Meu Fechamento • Capitalex Driver',
+                text: shareText
+              });
+              return;
+            } catch (err) {
+              if (err.name === 'AbortError') return;
+            }
+          }
+        }
+        window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(shareText), '_blank');
+      };
+    }
+  });
+
+  if (btnCopy) {
+    btnCopy.onclick = () => {
+      navigator.clipboard.writeText(shareText);
+      if (window.toast) window.toast('Texto formatado copiado! Cole no seu grupo de WhatsApp.');
+      else alert('Texto copiado com sucesso!');
+    };
+  }
+
+  const modal = document.getElementById('shareModal');
+  if (modal) {
+    if (!modal.dataset.backdropBound) {
+      modal.dataset.backdropBound = 'true';
+      modal.addEventListener('click', (e) => {
+        const rect = modal.getBoundingClientRect();
+        const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+          rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+        if (!isInDialog) modal.close();
+      });
+    }
+    modal.showModal();
+  }
+};
 window.DriverApp={
  async load(){
   const r=await window.Account.api('data');

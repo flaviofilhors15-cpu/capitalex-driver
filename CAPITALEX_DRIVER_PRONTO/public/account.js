@@ -14,19 +14,50 @@
   }
 
   function renderFriendlyBanner(daysLeft) {
-    let banner = el('friendlyRenewalBanner');
-    if (daysLeft > 0 && daysLeft <= 3) {
+    let banner = el('topNotificationBanner');
+    const billing = session?.billing;
+    if (!billing || billing.isAdmin) {
+      if (banner) banner.remove();
+      return;
+    }
+
+    if (billing.isTrial && billing.active) {
       if (!banner) {
         banner = document.createElement('div');
-        banner.id = 'friendlyRenewalBanner';
-        banner.style.cssText = 'background: #b45309; color: #ffffff; padding: 10px 16px; text-align: center; font-weight: 600; font-size: 0.92rem; border-bottom: 2px solid #f59e0b; display: flex; justify-content: center; align-items: center; gap: 12px; z-index: 999; box-shadow: 0 2px 8px rgba(0,0,0,0.3);';
+        banner.id = 'topNotificationBanner';
         document.body.prepend(banner);
       }
+      const days = billing.daysLeft || daysLeft || 0;
+      const isUrgent = days <= 1;
+      banner.className = 'trial-ticker-bar' + (isUrgent ? ' urgent' : '');
       banner.innerHTML = `
-        <span>⚠️ Olá! Sua assinatura vence em <strong>${daysLeft} dia${daysLeft > 1 ? 's' : ''}</strong>. Renove com antecedência para não interromper seu painel!</span>
-        <button id="btnBannerPix" style="background: #22c55e; color: #081320; border: none; padding: 5px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem;">Renovar via Pix</button>
+        <div class="trial-ticker-content">
+          <span class="trial-ticker-icon">${isUrgent ? '⚠️' : '🕒'}</span>
+          <span><strong>Teste Grátis:</strong> ${isUrgent ? 'Último dia de teste!' : `Restam <strong>${days} dia${days > 1 ? 's' : ''}</strong>`}</span>
+          <span class="trial-ticker-sep">•</span>
+          <span class="trial-ticker-hint">Seu painel está 100% liberado</span>
+        </div>
+        <button type="button" class="trial-ticker-btn" id="btnTrialUpgrade">Garantir meu plano</button>
       `;
-      const btn = document.getElementById('btnBannerPix');
+      const btn = document.getElementById('btnTrialUpgrade');
+      if (btn) btn.onclick = () => showPaywall();
+    } else if (daysLeft > 0 && daysLeft <= 3) {
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'topNotificationBanner';
+        document.body.prepend(banner);
+      }
+      banner.className = 'trial-ticker-bar warning';
+      banner.innerHTML = `
+        <div class="trial-ticker-content">
+          <span class="trial-ticker-icon">⚠️</span>
+          <span>Sua assinatura vence em <strong>${daysLeft} dia${daysLeft > 1 ? 's' : ''}</strong>.</span>
+          <span class="trial-ticker-sep">•</span>
+          <span class="trial-ticker-hint">Renove para não interromper seu painel</span>
+        </div>
+        <button type="button" class="trial-ticker-btn" id="btnTrialUpgrade">Renovar via Pix</button>
+      `;
+      const btn = document.getElementById('btnTrialUpgrade');
       if (btn) btn.onclick = () => showPaywall();
     } else if (banner) {
       banner.remove();
@@ -131,8 +162,8 @@
         tabLog.style.border = '1px solid #1f3550';
       }
       if (title) title.textContent = 'Criar sua conta';
-      if (desc) desc.textContent = 'Cadastre seu e-mail e crie uma senha para liberar seu acesso direto.';
-      if (submitBtn) submitBtn.textContent = 'Criar conta e ir para o Pix';
+      if (desc) desc.textContent = 'Cadastre seu e-mail e crie uma senha para começar seus 3 dias grátis na hora.';
+      if (submitBtn) submitBtn.textContent = 'Criar conta e começar 3 dias grátis';
       if (passInput) passInput.setAttribute('autocomplete', 'new-password');
     } else {
       if (tabLog) {
@@ -158,6 +189,7 @@
     session = null;
     stage('stepLogin');
     lock();
+    el('topNotificationBanner')?.remove();
     const banner = document.querySelector('.card-hero-banner');
     if (banner) banner.style.display = 'block';
     const tabs = el('authTabs');
@@ -173,6 +205,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
     stage('stepPlan');
     lock();
+    el('topNotificationBanner')?.remove();
     const banner = document.querySelector('.card-hero-banner');
     if (banner) banner.style.display = 'none';
     const tabs = el('authTabs');
@@ -185,20 +218,37 @@
     sp.hidden = false;
 
     const b = session?.billing || { active: false, daysLeft: 0 };
-    el('gateTitle').textContent = b.active ? 'Sua assinatura' : 'Ative seu acesso ao Capitalex';
-    el('gateDescription').textContent = session?.email || '';
+    if (b.active && b.isTrial) {
+      el('gateTitle').textContent = 'Seu Teste Grátis está ativo!';
+      el('gateDescription').textContent = session?.email || '';
+    } else if (!b.active) {
+      if (b.status === 'trial_expired') {
+        el('gateTitle').textContent = 'Seu teste de 3 dias terminou!';
+        el('gateDescription').textContent = 'Escolha seu plano para continuar acompanhando seus lucros e não perder seu histórico:';
+      } else if (b.status === 'expired') {
+        el('gateTitle').textContent = 'Sua assinatura venceu!';
+        el('gateDescription').textContent = 'Renove seu plano para continuar acessando seu painel:';
+      } else {
+        el('gateTitle').textContent = 'Ative seu acesso ao Capitalex';
+        el('gateDescription').textContent = session?.email || '';
+      }
+    } else {
+      el('gateTitle').textContent = 'Sua assinatura';
+      el('gateDescription').textContent = session?.email || '';
+    }
 
     const zapText = encodeURIComponent(`Olá Flavio! Fiz o Pix para liberar minha assinatura no Capitalex Driver.\nMeu e-mail cadastrado é: ${session?.email || ''}`);
     const zapUrl = `https://wa.me/${WHATSAPP_NUM}?text=${zapText}`;
 
     sp.innerHTML = `
       ${b.active ? `
-        <div style="background: #064e3b; color: #34d399; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; margin-bottom: 14px; text-align: center; border: 1px solid #059669; box-shadow: 0 4px 14px rgba(6,78,59,0.3);">
-          ✅ Assinatura Ativa ${b.daysLeft > 0 ? `· Restam ${b.daysLeft} dia(s)` : ''}
+        <div style="background: ${b.isTrial ? 'rgba(52,214,172,0.1)' : '#064e3b'}; color: #34d399; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; margin-bottom: 14px; text-align: center; border: 1px solid #059669; box-shadow: 0 4px 14px rgba(6,78,59,0.3);">
+          ${b.isTrial ? `🕒 Teste Grátis · Restam <strong>${b.daysLeft} dia(s)</strong>` : `✅ Assinatura Ativa ${b.daysLeft > 0 ? `· Restam ${b.daysLeft} dia(s)` : ''}`}
         </div>
         <button id="btnBackToApp" type="button" style="width: 100%; background: #34d6ac; color: #081320; border: none; padding: 13px; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 0.98rem; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(52,214,172,0.25);">
           ← Voltar ao Meu Painel
         </button>
+        ${b.isTrial ? '<div style="font-size: 0.88rem; color: #94a3b8; margin: 4px 0 12px; font-weight: 500;">Antecipe seu plano para continuar rodando com tranquilidade quando os 3 dias acabarem:</div>' : ''}
       ` : `
         <div style="font-size: 0.88rem; color: #94a3b8; margin: 4px 0 12px; font-weight: 500;">
           Escolha seu plano e faça o Pix para liberar o painel:

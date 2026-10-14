@@ -551,3 +551,482 @@ button:active {
   }
 }
 
+/* ============================================================
+   TICKER DISCRETO DE TESTE GRÁTIS / RENOVAÇÃO
+   ============================================================ */
+.trial-ticker-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 26, 38, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(52, 214, 172, 0.3);
+  color: #edf5fc;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.trial-ticker-bar.urgent {
+  background: rgba(45, 22, 10, 0.95);
+  border-bottom-color: #f59e0b;
+}
+
+.trial-ticker-bar.warning {
+  background: rgba(40, 24, 10, 0.95);
+  border-bottom-color: #f59e0b;
+}
+
+.trial-ticker-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.trial-ticker-icon {
+  font-size: 1.05rem;
+}
+
+.trial-ticker-sep {
+  color: #475569;
+}
+
+.trial-ticker-hint {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.trial-ticker-btn {
+  background: #34d6ac;
+  color: #081320;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 750;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  box-shadow: 0 2px 8px rgba(52, 214, 172, 0.2);
+}
+
+.trial-ticker-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+:root.light-theme .trial-ticker-bar {
+  background: rgba(240, 253, 248, 0.96);
+  border-bottom: 1px solid rgba(5, 150, 105, 0.3);
+  color: #0f172a;
+}
+
+:root.light-theme .trial-ticker-bar.urgent {
+  background: rgba(254, 243, 199, 0.96);
+  border-bottom-color: #d97706;
+}
+
+:root.light-theme .trial-ticker-hint {
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .trial-ticker-bar {
+    padding: 8px 12px;
+    gap: 10px;
+    font-size: 0.82rem;
+  }
+  .trial-ticker-hint, .trial-ticker-sep {
+    display: none;
+  }
+  .trial-ticker-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ============================================================
+   CARD DE ECONOMIA INTELIGENTE IDENTIFICADA
+   ============================================================ */
+.smart-economy-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  background: linear-gradient(135deg, rgba(16, 42, 38, 0.7) 0%, rgba(9, 24, 28, 0.85) 100%);
+  border: 1px solid rgba(52, 214, 172, 0.35);
+  border-radius: 18px;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.smart-economy-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #34d6ac, #38bdf8);
+}
+
+.smart-economy-card.promo {
+  background: linear-gradient(135deg, rgba(18, 30, 45, 0.7) 0%, rgba(10, 20, 32, 0.85) 100%);
+  border-color: rgba(67, 166, 255, 0.3);
+}
+
+.smart-economy-card.promo::before {
+  background: linear-gradient(180deg, #43a6ff, #34d6ac);
+}
+
+.economy-icon-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(52, 214, 172, 0.12);
+  border: 1px solid rgba(52, 214, 172, 0.25);
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.smart-economy-card.promo .economy-icon-wrap {
+  background: rgba(67, 166, 255, 0.12);
+  border-color: rgba(67, 166, 255, 0.25);
+}
+
+.economy-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.economy-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #34d6ac;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.smart-economy-card.promo .economy-badge {
+  color: #38bdf8;
+}
+
+.economy-headline {
+  font-size: 1.05rem;
+  color: #edf5fc;
+  line-height: 1.5;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.economy-amount {
+  color: #34d6ac;
+  font-weight: 800;
+  font-size: 1.22rem;
+  letter-spacing: -0.5px;
+}
+
+.economy-content h3 {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: #ffffff;
+  margin: 0 0 6px;
+}
+
+.economy-content p {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.economy-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.economy-pill {
+  background: rgba(52, 214, 172, 0.15);
+  color: #34d6ac;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(52, 214, 172, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.economy-subtext {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+:root.light-theme .smart-economy-card {
+  background: #f0fdf4;
+  border-color: #86efac;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+:root.light-theme .economy-headline {
+  color: #0f172a;
+}
+
+:root.light-theme .economy-amount {
+  color: #059669;
+}
+
+:root.light-theme .economy-badge {
+  color: #059669;
+}
+
+:root.light-theme .economy-pill {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+:root.light-theme .smart-economy-card.promo {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+:root.light-theme .economy-content h3 {
+  color: #0f172a;
+}
+
+:root.light-theme .economy-subtext {
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .smart-economy-card {
+    padding: 16px;
+    gap: 14px;
+    border-radius: 16px;
+    margin-bottom: 18px;
+  }
+  .economy-icon-wrap {
+    width: 38px;
+    height: 38px;
+    font-size: 1.15rem;
+  }
+  .economy-headline {
+    font-size: 0.95rem;
+  }
+  .economy-amount {
+    font-size: 1.1rem;
+  }
+  .economy-subtext {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   MODAL DO CARTÃO DE COMPARTILHAMENTO (WHATSAPP CARD)
+   ============================================================ */
+.share-card-dialog {
+  max-width: 480px;
+  width: min(480px, calc(100% - 24px));
+  max-height: 92vh;
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px;
+  border-radius: 24px;
+  background: #0b1a29;
+  border: 1px solid #1f3d5b;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+  margin: auto;
+}
+
+.share-card-dialog::backdrop {
+  background: rgba(4, 10, 16, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+#sharePreviewContainer img {
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+  max-width: 100%;
+  max-height: 44vh;
+  max-height: 44dvh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+#sharePreviewContainer img:hover {
+  transform: scale(1.01);
+}
+
+:root.light-theme .share-card-dialog {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .share-card-dialog {
+    width: min(440px, calc(100% - 20px));
+    padding: 18px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-radius: 20px;
+  }
+  .share-card-dialog .modal-head h2 {
+    font-size: 17px;
+  }
+  .share-card-dialog button.ghost {
+    font-size: 13px !important;
+    padding: 10px 8px !important;
+  }
+}
+
+/* ============================================================
+   VEREDITO DO COMPARADOR DE COMBUSTÍVEL
+   ============================================================ */
+.fuel-veredito {
+  text-align: center;
+  padding: 15px 14px;
+  border-radius: 16px;
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
+}
+
+.fuel-veredito.eth-wins {
+  background: rgba(52, 214, 172, 0.12);
+  border: 1.5px solid var(--green);
+}
+
+.fuel-veredito.gas-wins {
+  background: rgba(67, 166, 255, 0.12);
+  border: 1.5px solid var(--blue);
+}
+
+.fuel-veredito-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.fuel-veredito.eth-wins .fuel-veredito-tag {
+  color: var(--green);
+}
+
+.fuel-veredito.gas-wins .fuel-veredito-tag {
+  color: var(--blue);
+}
+
+.fuel-veredito-title {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 5px 0;
+  display: block;
+  letter-spacing: -0.3px;
+}
+
+.fuel-veredito-sub {
+  font-size: 13.5px;
+  font-weight: 600;
+  display: block;
+  line-height: 1.4;
+}
+
+.fuel-veredito.eth-wins .fuel-veredito-sub {
+  color: #5eead4;
+}
+
+.fuel-veredito.gas-wins .fuel-veredito-sub {
+  color: #7dd3fc;
+}
+
+:root.light-theme .fuel-veredito.eth-wins {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+:root.light-theme .fuel-veredito.gas-wins {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+:root.light-theme .fuel-veredito.eth-wins .fuel-veredito-tag,
+:root.light-theme .fuel-veredito.eth-wins .fuel-veredito-sub {
+  color: #15803d;
+}
+
+:root.light-theme .fuel-veredito.gas-wins .fuel-veredito-tag,
+:root.light-theme .fuel-veredito.gas-wins .fuel-veredito-sub {
+  color: #0369a1;
+}
+
+:root.light-theme .fuel-veredito.title {
+  color: #0f172a;
+}
+
+/* ============================================================
+   CAIXINHA BLINDADA IPVA & SEGURO (HERO CARD & VELOCÍMETRO)
+   ============================================================ */
+.ipva-blindada-hero {
+  background: linear-gradient(145deg, #0d263a 0%, #081726 100%);
+  border: 1.5px solid #234c70;
+  border-radius: 22px;
+  padding: 24px 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.ipva-hero-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+:root.light-theme .ipva-blindada-hero {
+  background: linear-gradient(145deg, #f0fdfa 0%, #ffffff 100%);
+  border-color: #99f6e4;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+:root.light-theme .ipva-blindada-hero h2 {
+  color: #0f172a;
+}
+
+@media (max-width: 700px) {
+  .ipva-hero-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+}
+
+
+
+
