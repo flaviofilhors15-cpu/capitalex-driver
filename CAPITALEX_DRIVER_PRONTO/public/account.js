@@ -417,7 +417,14 @@
       const isAdmin = Boolean(session?.billing?.isAdmin || session?.email === 'flaviofilhors15@gmail.com');
       showAdminLinks(isAdmin);
       if (session?.billing?.active) {
-        await window.DriverApp.load();
+        if (!window.DriverApp?.load) {
+          for (let i = 0; i < 30 && !window.DriverApp?.load; i++) {
+            await new Promise(r => setTimeout(r, 100));
+          }
+        }
+        if (window.DriverApp?.load) {
+          await window.DriverApp.load();
+        }
         unlock();
         message('');
         renderFriendlyBanner(session.billing.daysLeft);
