@@ -549,7 +549,7 @@
       window.CapitalexSession = session;
       const isAdmin = Boolean(session?.billing?.isAdmin || session?.email === 'flaviofilhors15@gmail.com');
       showAdminLinks(isAdmin);
-      if (session?.billing?.active) {
+      if (isAdmin || session?.billing?.active) {
         if (!window.DriverApp?.load) {
           for (let i = 0; i < 30 && !window.DriverApp?.load; i++) {
             await new Promise(r => setTimeout(r, 100));
@@ -558,16 +558,22 @@
         if (window.DriverApp?.load) {
           await window.DriverApp.load();
         }
-        const chosenPlan = localStorage.getItem('capitalex_chosen_plan');
-        if (chosenPlan) {
+        if (!isAdmin) {
+          const chosenPlan = localStorage.getItem('capitalex_chosen_plan');
+          if (chosenPlan) {
+            localStorage.removeItem('capitalex_chosen_plan');
+            showPaywall(chosenPlan);
+            message('Conta criada com sucesso! Faça o Pix para liberação definitiva.');
+            return;
+          }
+        } else {
           localStorage.removeItem('capitalex_chosen_plan');
-          showPaywall(chosenPlan);
-          message('Conta criada com sucesso! Faça o Pix para liberação definitiva.');
-          return;
         }
         unlock();
         message('');
-        renderFriendlyBanner(session.billing.daysLeft);
+        if (!isAdmin) {
+          renderFriendlyBanner(session.billing.daysLeft);
+        }
       } else {
         showPaywall();
         message('Faça seu Pix e envie o comprovante para liberar o seu acesso.');

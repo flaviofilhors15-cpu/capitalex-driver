@@ -853,6 +853,9 @@
       let emRisco = 0;
 
       todosUsuarios.forEach(u => {
+        const email = (u.email || '').trim().toLowerCase();
+        const isAdm = email === 'flaviofilhors15@gmail.com' || Boolean(u.is_admin);
+        if (isAdm) return; // Conta de administrador tem acesso vitalício gratuito e não entra nas métricas de clientes pagantes nem no MRR
         if (!isUserHidden(u)) {
           total++;
           if (u.is_active) {
@@ -934,7 +937,7 @@
           const e = (u.email || '').trim().toLowerCase();
           return !isUserHidden(u) && e.includes(termo);
         });
-        if (currentFilter === 'paying') filtrados = filtrados.filter(u => u.is_active && u.status !== 'trial');
+        if (currentFilter === 'paying') filtrados = filtrados.filter(u => u.is_active && u.status !== 'trial' && (u.email || '').toLowerCase() !== 'flaviofilhors15@gmail.com' && !u.is_admin);
         else if (currentFilter === 'trial') filtrados = filtrados.filter(u => u.is_active && u.status === 'trial');
         else if (currentFilter === 'trial_ending') filtrados = filtrados.filter(u => u.is_active && u.status === 'trial' && u.days_left <= 1);
         else if (currentFilter === 'risk') filtrados = filtrados.filter(u => u.is_active && typeof u.days_inactive === 'number' && u.days_inactive >= 3 && u.days_inactive <= 5);
@@ -1016,9 +1019,13 @@
       }
 
       tbody.innerHTML = lista.map(u => {
+        const isAdm = (u.email || '').trim().toLowerCase() === 'flaviofilhors15@gmail.com' || Boolean(u.is_admin);
         let badge = '<span class="badge badge-expired">● Inativo</span>';
         let expira = '<span style="color: var(--muted)">—</span>';
-        if (u.is_active) {
+        if (isAdm) {
+          badge = '<span class="badge" style="background:rgba(56,189,248,0.2);color:#38bdf8;border:1px solid rgba(56,189,248,0.4);font-weight:800;">👑 Administrador (Dono)</span>';
+          expira = '<span style="color:var(--green);font-weight:750;">Vitalício Gratuito</span>';
+        } else if (u.is_active) {
           if (u.status === 'trial') {
             badge = `<span class="badge badge-trial">⏳ Teste (${u.days_left}d)</span>`;
           } else {
@@ -1033,7 +1040,9 @@
 
         const inact = typeof u.days_inactive === 'number' ? u.days_inactive : null;
         let healthBadge = '<span style="color: var(--muted)">—</span>';
-        if (inact !== null) {
+        if (isAdm) {
+          healthBadge = '<span class="badge badge-healthy">🟢 Dono</span>';
+        } else if (inact !== null) {
           if (inact <= 2) {
             healthBadge = `<span class="badge badge-healthy" title="Último registro recente: ${inact === 0 ? 'hoje' : 'há ' + inact + 'd'}">🟢 Ativo (${inact === 0 ? 'Hoje' : inact + 'd'})</span>`;
           } else if (inact >= 3 && inact <= 5) {
@@ -1044,15 +1053,18 @@
         }
 
         const isHiddenView = currentFilter === 'hidden';
-        const botaoAcao = isHiddenView
-          ? `<button onclick="restaurarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-action-icon" style="color:var(--blue); border-color:var(--blue);" title="Reexibir na lista principal">Restaurar</button>
-             <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-action-danger" title="Excluir definitivamente do banco">🗑️</button>`
-          : `<button onclick="ocultarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-action-icon" title="Ocultar da lista">👁️</button>
-             <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-action-danger" title="Excluir definitivamente do banco">🗑️</button>`;
+        const botaoAcao = isAdm
+          ? `<span style="color:var(--muted);font-size:12px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-weight:600;">Dono</span>`
+          : (isHiddenView
+            ? `<button onclick="restaurarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-action-icon" style="color:var(--blue); border-color:var(--blue);" title="Reexibir na lista principal">Restaurar</button>
+               <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-action-danger" title="Excluir definitivamente do banco">🗑️</button>`
+            : `<button onclick="ocultarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-action-icon" title="Ocultar da lista">👁️</button>
+               <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-action-danger" title="Excluir definitivamente do banco">🗑️</button>`);
 
-        const botaoWhats = (u.email && u.email !== 'Não informado')
+        const botaoWhats = (!isAdm && u.email && u.email !== 'Não informado')
           ? `<button onclick="lembrarRenovacaoWhatsApp('${u.email}', ${u.days_left || 0}, '${u.status || ''}', ${typeof u.days_inactive === 'number' ? u.days_inactive : -1})" class="btn btn-action-wa" title="Cobrar / Lembrar Renovação via WhatsApp">📲 WhatsApp</button>`
           : '';
+        const botaoRenovar = isAdm ? '' : `<button onclick="selecionarUsuario('${u.email}')" class="btn btn-action-renew" title="Renovar / Liberar">⚡ Renovar</button>`;
 
         return `
           <tr>
@@ -1070,7 +1082,7 @@
             <td><strong>${expira}</strong></td>
             <td>
               <div class="actions-cell">
-                <button onclick="selecionarUsuario('${u.email}')" class="btn btn-action-renew" title="Renovar / Liberar">⚡ Renovar</button>
+                ${botaoRenovar}
                 ${botaoWhats}
                 ${botaoAcao}
               </div>
