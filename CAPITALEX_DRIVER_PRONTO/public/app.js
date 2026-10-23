@@ -73,8 +73,8 @@ function cards(t){
   const valFormatted = secretMoney(t.net);
   const incFormatted = secretMoney(t.income);
   const expFormatted = secretMoney(t.expense);
-  const rendFormatted = t.km ? (hideValues ? '•••••' : money(t.net/t.km)+'/km') : '—';
-  const rendSub = t.hours ? (hideValues ? '•••••' : money(t.net/t.hours)+'/h') : (number(t.km)+' km rodados');
+  const rendKmFormatted = t.km ? (hideValues ? '•••••' : money(t.net/t.km)+'/km') : '—';
+  const rendHourFormatted = t.hours ? (hideValues ? '•••••' : money(t.net/t.hours)+'/h') : '—';
 
   return `
     <div class="hero-balance-card ${isPositive?'is-profit':'is-loss'}">
@@ -109,25 +109,40 @@ function cards(t){
 
       <div class="hero-balance-grid">
         <div class="hero-subcard income">
-          <div class="hero-sub-label">🟢 Ganhos Recebidos</div>
+          <div class="hero-sub-label">🟢 Ganhos Brutos</div>
           <div class="hero-sub-val">${incFormatted}</div>
           <small class="hero-sub-note">${number(t.count)} corridas registradas</small>
         </div>
         <div class="hero-subcard expense">
           <div class="hero-sub-label">🔴 Despesas Pagas</div>
           <div class="hero-sub-val">${expFormatted}</div>
-          <small class="hero-sub-note">Todos os gastos lançados</small>
+          <small class="hero-sub-note">Gastos operacionais</small>
         </div>
         <div class="hero-subcard efficiency">
-          <div class="hero-sub-label">⚡ Rendimento Líquido</div>
-          <div class="hero-sub-val">${rendFormatted}</div>
-          <small class="hero-sub-note">${rendSub}</small>
+          <div class="hero-sub-label">🚗 Por Km Rodado</div>
+          <div class="hero-sub-val">${rendKmFormatted}</div>
+          <small class="hero-sub-note">${t.km ? number(t.km)+' km rodados' : 'Sem km registrado'}</small>
+        </div>
+        <div class="hero-subcard efficiency" style="border-color:#1e4963;">
+          <div class="hero-sub-label">⏱️ Por Hora Líquida</div>
+          <div class="hero-sub-val" style="color:#38bdf8;">${rendHourFormatted}</div>
+          <small class="hero-sub-note">${t.hours ? number(t.hours)+' h trabalhadas' : 'Sem horas anotadas'}</small>
         </div>
       </div>
     </div>
   `;
 }
-function table(entries){if(!entries.length)return empty('Seu histórico começa aqui','Registre um ganho ou uma despesa para acompanhar a evolução.');return `<div class="table-wrap"><table class="transactions-table"><thead><tr><th>Data</th><th>Lançamento</th><th>Detalhes</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...entries].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<tr><td>${displayDate(e.date)}</td><td>${esc(e.type==='income'?(e.mode==='daily'?'Fechamento do dia':e.app):e.category)}<br><small>${esc(e.description)}</small></td><td>${e.type==='income'?`${number(e.count)} corridas · ${number(e.km)} km<br><small>${number(e.hours)} h registradas</small>`:'<span class="tag">Despesa</span>'}</td><td class="${e.type==='income'?'positive':'negative'}">${e.type==='income'?'+':'−'} ${money(e.amount)}</td><td><button data-edit="${esc(e.id)}" aria-label="Editar lançamento de ${displayDate(e.date)}">Editar</button> <button data-delete="${esc(e.id)}" class="ghost danger" aria-label="Excluir lançamento de ${displayDate(e.date)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`;}
+function appBadge(app, isDaily=false){
+  if(isDaily) return '<span class="badge-app" style="background:#1e293b;color:#38bdf8;border:1px solid #0284c7;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:4px;">📊 Fechamento Geral</span>';
+  if(!app) return '<span class="badge-app" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">🚗 Corrida</span>';
+  const a=String(app).toLowerCase().trim();
+  if(a.includes('uber')) return '<span class="badge-app badge-uber" style="background:#000000;color:#ffffff;border:1px solid #475569;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:5px;"><span style="font-size:10px;line-height:1;background:#fff;color:#000;padding:1px 3px;border-radius:2px;font-weight:900;">U</span> Uber</span>';
+  if(a.includes('99')) return '<span class="badge-app badge-99" style="background:#f59e0b;color:#000000;border:1px solid #d97706;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:900;display:inline-flex;align-items:center;gap:4px;">⚡ 99 Pop</span>';
+  if(a.includes('indrive')||a.includes('drive')) return '<span class="badge-app badge-indrive" style="background:#059669;color:#ffffff;border:1px solid #10b981;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:4px;">🟢 inDrive</span>';
+  if(a.includes('part')||a.includes('privado')) return '<span class="badge-app badge-part" style="background:#1e3a8a;color:#bfdbfe;border:1px solid #3b82f6;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:4px;">🚗 Particular</span>';
+  return `<span class="badge-app" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;">${esc(app)}</span>`;
+}
+function table(entries){if(!entries.length)return empty('Seu histórico começa aqui','Registre um ganho ou uma despesa para acompanhar a evolução.');return `<div class="table-wrap"><table class="transactions-table"><thead><tr><th>Data</th><th>Lançamento</th><th>Detalhes</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...entries].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<tr><td>${displayDate(e.date)}</td><td>${e.type==='income'?(e.mode==='daily'?appBadge('',true):appBadge(e.app)):`<span style="background:rgba(239,68,68,0.12);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;">${esc(e.category)}</span>`}${e.description?`<br><small class="muted">${esc(e.description)}</small>`:''}</td><td>${e.type==='income'?`${number(e.count)} corridas · ${number(e.km)} km<br><small>${number(e.hours)} h registradas</small>`:'<span class="tag">Despesa</span>'}</td><td class="${e.type==='income'?'positive':'negative'}">${e.type==='income'?'+':'−'} ${money(e.amount)}</td><td><button data-edit="${esc(e.id)}" aria-label="Editar lançamento de ${displayDate(e.date)}">Editar</button> <button data-delete="${esc(e.id)}" class="ghost danger" aria-label="Excluir lançamento de ${displayDate(e.date)}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`;}
 function trendData(report=false){
  let start,end;const b=bounds();if(!report){end=b[1]==='9999-12-31'?dateKey():b[1];const d=new Date(end+'T12:00:00');d.setDate(d.getDate()-6);start=dateKey(d);}else{const dates=selected().map(e=>e.date).sort();start=b[0]==='0000-01-01'?(dates[0]||dateKey()):b[0];end=b[1]==='9999-12-31'?(dates.at(-1)||dateKey()):b[1];}
  const n=Math.round((new Date(end+'T12:00:00')-new Date(start+'T12:00:00'))/86400000)+1;
@@ -183,7 +198,99 @@ function donut(entries=selected()){
   });
   return `<div class="donut-layout"><div style="position:relative;width:220px;height:220px;"><canvas id="${id}"></canvas><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-weight:700;margin-top:4px">TOTAL GASTO</span><span style="font-size:19px;font-weight:800;color:var(--text)">${money(total)}</span></div></div><div class="donut-legend">${items.map(([k,v],i)=>`<div class="list-row"><span><i style="background:${colors[i%colors.length]}"></i>${esc(k)}</span><span><strong>${money(v)}</strong><small>${total>0?number(v/total*100):0}%</small></span></div>`).join('')}</div></div>`;
 }
-function goalPanel(title,actual,target,note){const pct=target>0?Math.max(0,actual/target*100):100;return `<h2>${title}</h2><p class="muted">${money(actual)} de ${money(target)}</p><div class="metric">${number(pct)}%</div><progress max="100" value="${Math.min(100,pct)}" aria-label="${esc(title)}"></progress><p>${actual>=target?'Objetivo alcançado. Bom trabalho!':`Faltam <strong>${money(target-actual)}</strong>`}</p><small>${note}</small>`;}
+function goalPanel(title,actual,target,note){
+  const reached = target > 0 && actual >= target;
+  const pct = target > 0 ? Math.max(0, actual / target * 100) : 100;
+  return `
+    <div class="goal-card-wrap ${reached ? 'goal-reached-glow' : ''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <h2 style="margin:0;">${title}</h2>
+        ${reached ? `<span style="background:linear-gradient(135deg, #10b981, #059669);color:#ffffff;font-size:11px;font-weight:900;padding:4px 10px;border-radius:20px;letter-spacing:0.5px;box-shadow:0 0 14px rgba(16,185,129,0.5);display:inline-flex;align-items:center;gap:4px;">🎯 META BATIDA!</span>` : ''}
+      </div>
+      <p class="muted" style="margin-bottom:6px;">${money(actual)} de ${money(target)}</p>
+      <div class="metric" style="${reached ? 'color:#34d6ac;text-shadow:0 0 12px rgba(52,214,172,0.45);' : ''}">${number(pct)}%</div>
+      <progress max="100" value="${Math.min(100,pct)}" aria-label="${esc(title)}"></progress>
+      <p style="margin-top:10px;">${reached ? '🎉 <strong>Sensacional! Você já superou sua meta diária de hoje!</strong>' : `Faltam <strong>${money(target-actual)}</strong> para bater o objetivo.`}</p>
+      <small class="muted">${note}</small>
+    </div>
+  `;
+}
+function bestDayCard(){
+  const incomes = (state().entries || []).filter(e => e.type === 'income' && e.amount > 0);
+  if (!incomes.length) return '';
+
+  const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  
+  const dateTotals = new Map();
+  incomes.forEach(e => {
+    if (!e.date) return;
+    const current = dateTotals.get(e.date) || { sum: 0, dayOfWeek: (new Date(e.date + 'T12:00:00')).getDay() };
+    current.sum += Number(e.amount || 0);
+    dateTotals.set(e.date, current);
+  });
+
+  const promoHtml = `
+    <div class="smart-economy-card promo" style="margin-bottom:18px;">
+      <div class="economy-icon-wrap">📅</div>
+      <div class="economy-content">
+        <div class="economy-badge">📊 INTELIGÊNCIA OPERACIONAL</div>
+        <div class="economy-headline">O Capitalex está mapeando seu <strong>Melhor Dia</strong> e sua <strong>Folga Inteligente</strong>.</div>
+        <p style="margin:6px 0 0;font-size:13px;color:#94a3b8;">
+          Continue registrando suas corridas. Conforme acumular dias de trabalho, o sistema identifica automaticamente qual dia mais lucra e qual é o ideal para folgar sem perder faturamento!
+        </p>
+      </div>
+    </div>
+  `;
+
+  if (dateTotals.size < 3) return promoHtml;
+
+  const dayStats = Array(7).fill(null).map((_, i) => ({ day: i, name: dayNames[i], totalSum: 0, daysCount: 0 }));
+  dateTotals.forEach(d => {
+    if (d.dayOfWeek >= 0 && d.dayOfWeek <= 6) {
+      dayStats[d.dayOfWeek].totalSum += d.sum;
+      dayStats[d.dayOfWeek].daysCount += 1;
+    }
+  });
+
+  const workedDays = dayStats.filter(d => d.daysCount > 0).map(d => ({
+    ...d,
+    avg: round(d.totalSum / d.daysCount)
+  }));
+
+  if (workedDays.length < 2) return promoHtml;
+
+  workedDays.sort((a, b) => b.avg - a.avg);
+  const best = workedDays[0];
+  const weakest = workedDays[workedDays.length - 1];
+
+  const bestValFormatted = hideValues ? '•••••' : money(best.avg) + '/dia';
+  const weakValFormatted = hideValues ? '•••••' : money(weakest.avg) + '/dia';
+
+  return `
+    <div class="smart-economy-card" style="background:linear-gradient(135deg,rgba(16,42,65,0.85),rgba(9,26,45,0.95));border:1px solid #1e4d75;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-bottom:18px;">
+      <div class="economy-icon-wrap" style="background:linear-gradient(135deg,rgba(52,214,172,0.2),rgba(56,189,248,0.2));border-color:#34d6ac;color:#34d6ac;font-size:24px;">⭐</div>
+      <div class="economy-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+          <div class="economy-badge" style="background:rgba(52,214,172,0.15);color:#34d6ac;border-color:rgba(52,214,172,0.35);">
+            🧠 INTELIGÊNCIA CAPITALEX • SEU MELHOR DIA
+          </div>
+          <span style="font-size:12px;font-weight:700;color:#94a3b8;background:rgba(255,255,255,0.06);padding:3px 9px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);">
+            ${dateTotals.size} dias analisados
+          </span>
+        </div>
+        <div class="economy-headline" style="font-size:15px;line-height:1.45;color:#f1f5f9;">
+          Seu dia mais lucrativo é <strong style="color:#34d6ac;font-weight:800;font-size:16px;">${best.name}</strong>, faturando em média <strong style="color:#38bdf8;">${bestValFormatted}</strong>!
+        </div>
+        <div style="margin-top:8px;padding:10px 12px;background:rgba(8,19,32,0.7);border-radius:10px;border-left:3px solid #ffb46b;display:flex;align-items:flex-start;gap:10px;">
+          <span style="font-size:16px;line-height:1.2;">💡</span>
+          <p style="margin:0;font-size:13px;line-height:1.4;color:#cbd5e1;">
+            <strong>Dica Estratégica:</strong> Seu dia de menor faturamento histórico é <strong>${weakest.name}</strong> (${weakValFormatted}). Sugerido para sua <strong>folga semanal</strong> ou manutenção preventiva, poupando combustível e preservando o carro nos dias de demanda baixa!
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+}
 function economyCard(t){
   const entries=selected();
   const fuelExpenses=entries
@@ -221,7 +328,7 @@ function economyCard(t){
   const ipvaTotalDash = (state().funds||[]).filter(f=>f&&f.name&&(f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva')||f.name.toLowerCase().includes('seguro'))).reduce((a,f)=>a+Number(f.amount||0),0);
   const targetIpvaDash = Number(localStorage.getItem('cap_ipva_goal'))||Number(state().profile.ipvaGoal)||2400;
   const pctIpvaDash = Math.min(100, Math.round((ipvaTotalDash/targetIpvaDash)*100));
-  return `${alertHtml}${reminderBanner}${cards(t)}${economyCard(t)}<div class="split"><section class="panel"><div class="panel-head"><div><h2>Ritmo da semana</h2><p>7 dias até a data final do período • valores em R$</p></div><span class="tag">7 DIAS</span></div>${chart()}</section><section class="panel">${goalPanel('Sua meta de hoje',today.net,state().goals.daily,'Meta sobre o saldo, antes das reservas estimadas.')}<div class="actions" style="margin-top:20px"><button class="primary" data-action="income">🚗 Nova Corrida</button><button class="ghost" data-action="expense">⛽ Novo Gasto</button><button class="ghost" data-action="daily">⚡ Fechar Dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;"><span style="font-size:15px;">📸</span> Card do Dia</button></div></section></div><section class="panel" style="margin-bottom:22px"><div class="panel-head"><div><h2>Para onde foi o dinheiro</h2><p>Despesas do período, por categoria</p></div><a href="#gastos" class="positive">Ver despesas</a></div>${donut()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Últimos lançamentos</h2><a href="#corridas" class="positive">Ver ganhos</a></div>${table([...selected()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5))}</section><section class="panel"><h2>Olhar para o próximo mês</h2><p class="muted">Provisão estimada para o desgaste do carro.</p><div class="list-row"><span>Reserva sugerida</span><strong>${money(reserve)}</strong></div><div class="list-row"><span>Saldo após provisão</span><strong class="positive">${money(t.net-reserve)}</strong></div><div class="list-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);"><span>🛡️ IPVA & Seguro</span><strong><a href="#investimentos" style="color:var(--green);text-decoration:none;font-weight:750;">${pctIpvaDash}% blindado (${money(ipvaTotalDash)}) ➔</a></strong></div><p class="notice">Estimativa de ${money(state().reservePerKm)} por km. Não movimenta dinheiro e não é uma despesa paga. Ajuste em Veículo.</p></section></div>`;
+  return `${alertHtml}${reminderBanner}${cards(t)}${economyCard(t)}${bestDayCard()}<div class="split"><section class="panel"><div class="panel-head"><div><h2>Ritmo da semana</h2><p>7 dias até a data final do período • valores em R$</p></div><span class="tag">7 DIAS</span></div>${chart()}</section><section class="panel">${goalPanel('Sua meta de hoje',today.net,state().goals.daily,'Meta sobre o saldo, antes das reservas estimadas.')}<div class="actions" style="margin-top:20px"><button class="primary" data-action="income">🚗 Nova Corrida</button><button class="ghost" data-action="expense">⛽ Novo Gasto</button><button class="ghost" data-action="daily">⚡ Fechar Dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;"><span style="font-size:15px;">📸</span> Card do Dia</button></div></section></div><section class="panel" style="margin-bottom:22px"><div class="panel-head"><div><h2>Para onde foi o dinheiro</h2><p>Despesas do período, por categoria</p></div><a href="#gastos" class="positive">Ver despesas</a></div>${donut()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Últimos lançamentos</h2><a href="#corridas" class="positive">Ver ganhos</a></div>${table([...selected()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5))}</section><section class="panel"><h2>Olhar para o próximo mês</h2><p class="muted">Provisão estimada para o desgaste do carro.</p><div class="list-row"><span>Reserva sugerida</span><strong>${money(reserve)}</strong></div><div class="list-row"><span>Saldo após provisão</span><strong class="positive">${money(t.net-reserve)}</strong></div><div class="list-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);"><span>🛡️ IPVA & Seguro</span><strong><a href="#investimentos" style="color:var(--green);text-decoration:none;font-weight:750;">${pctIpvaDash}% blindado (${money(ipvaTotalDash)}) ➔</a></strong></div><p class="notice">Estimativa de ${money(state().reservePerKm)} por km. Não movimenta dinheiro e não é uma despesa paga. Ajuste em Veículo.</p></section></div>`;
  }
 function gains(){return `<section class="panel"><div class="panel-head"><div><h2>Seu trabalho registrado</h2><p>Escolha corridas individuais ou um fechamento completo por dia.</p></div><div class="actions"><button class="primary" data-action="daily">Fechar dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;">📸 Card do Dia</button></div></div><p class="notice">O fechamento soma todos os aplicativos. Para evitar duplicidade, um dia com corridas individuais não aceita fechamento até que esses registros sejam removidos.</p>${table(selected().filter(e=>e.type==='income'))}</section>`;}
 function expenses(){return `<div class="split"><section class="panel"><div class="panel-head"><h2>Despesas do período</h2><button data-action="expense" class="primary">+ Gasto</button></div>${table(selected().filter(e=>e.type==='expense'))}</section><section class="panel"><h2>Despesas por categoria</h2><p class="muted">Valores e participação no período selecionado.</p>${donut()}</section></div>`;}

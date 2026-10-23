@@ -414,10 +414,26 @@ button:active {
 
 .hero-balance-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
   padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (max-width: 950px) {
+  .hero-balance-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+.goal-card-wrap.goal-reached-glow {
+  border-radius: 18px;
+  padding: 4px;
+  position: relative;
+}
+.goal-reached-glow progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #10b981 0%, #34d6ac 60%, #fbbf24 100%) !important;
+  box-shadow: 0 0 16px rgba(52, 214, 172, 0.6);
 }
 
 .hero-subcard {
