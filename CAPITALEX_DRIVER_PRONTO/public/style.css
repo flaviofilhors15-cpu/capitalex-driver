@@ -1050,6 +1050,56 @@ button:active {
   }
 }
 
+/* ============================================================
+   WIDGET META ZERO E COFRE DO ALUGUEL (CARRO ALUGADO)
+   ============================================================ */
+:root.light-theme .meta-zero-card {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%) !important;
+  border-color: #86efac !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05) !important;
+}
 
+:root.light-theme .meta-zero-card:not(.paid) {
+  background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%) !important;
+  border-color: #bae6fd !important;
+}
 
+.cofre-aluguel-hero {
+  background: linear-gradient(145deg, #0c273d 0%, #081726 100%);
+  border: 1.5px solid #235882;
+  border-radius: 22px;
+  padding: 24px 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
 
+:root.light-theme .cofre-aluguel-hero {
+  background: linear-gradient(145deg, #f0f9ff 0%, #ffffff 100%);
+  border-color: #7dd3fc;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+:root.light-theme .cofre-aluguel-hero h2 {
+  color: #0f172a;
+}
+
+.vistoria-card {
+  background: rgba(10, 23, 38, 0.95);
+  border: 1.5px solid #2a4d6e;
+  border-radius: 20px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+:root.light-theme .vistoria-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
+:root.light-theme .vistoria-box-item {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}

@@ -313,6 +313,61 @@ function economyCard(t){
   const savingsFormatted=hideValues?'•••••':money(estimatedSavings);
   return `<div class="smart-economy-card"><div class="economy-icon-wrap">⚡</div><div class="economy-content"><div class="economy-badge">💡 ECONOMIA INTELIGENTE IDENTIFICADA</div><div class="economy-headline">O Capitalex já ajudou você a identificar <strong class="economy-amount">${savingsFormatted}</strong> em economia de combustível e custos evitados no período.</div><div class="economy-footer"><span class="economy-pill">🔥 Já pagou sua assinatura mais de <strong>${timesPaid}x</strong></span><span class="economy-subtext">Cálculo baseado na redução de km rodado vazio e controle de consumo.</span></div></div></div>`;
 }
+function metaZeroCard() {
+  const p = state().profile;
+  if (p.vehicleType !== 'rent') return '';
+  const rentWeekly = Number(p.rentWeekly) || 650;
+  const rentWorkDays = Number(p.rentWorkDays) || 6;
+  const rentDaily = round(rentWeekly / Math.max(1, rentWorkDays));
+
+  const todayEntries = state().entries.filter(e => e.date === dateKey());
+  const todayIncome = round(todayEntries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0));
+
+  const pct = rentDaily > 0 ? Math.min(100, Math.round((todayIncome / rentDaily) * 100)) : 100;
+  const isPaid = todayIncome >= rentDaily;
+  const remaining = Math.max(0, rentDaily - todayIncome);
+  const profitAfterCar = Math.max(0, todayIncome - rentDaily);
+
+  const titleColor = isPaid ? 'var(--green)' : '#38bdf8';
+  const icon = isPaid ? '🎉' : '⚡';
+  const badgeText = isPaid ? '✅ META ZERO ATINGIDA • ALUGUEL PAGO!' : '🏢 META ZERO • PAGANDO A DIÁRIA DO CARRO';
+
+  return `
+    <div class="smart-economy-card meta-zero-card ${isPaid ? 'paid' : ''}" style="margin-bottom: 22px;">
+      <div class="economy-icon-wrap" style="background: ${isPaid ? 'rgba(52,214,172,0.2)' : 'rgba(56,189,248,0.2)'}; border-color: ${isPaid ? 'var(--green)' : '#38bdf8'}; font-size: 24px;">
+        ${icon}
+      </div>
+      <div class="economy-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+          <div class="economy-badge" style="color: ${titleColor}; letter-spacing: 0.8px;">
+            ${badgeText}
+          </div>
+          <span style="font-size: 11.5px; font-weight: 700; color: var(--muted); background: var(--bg); padding: 3px 10px; border-radius: 12px; border: 1px solid var(--line);">
+            Diária: ${money(rentDaily)} (${rentWorkDays}d/sem)
+          </span>
+        </div>
+
+        <div style="margin: 8px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+            <span style="font-size: 14px; color: var(--text); font-weight: 700;">
+              ${isPaid ? 'Faturamento de Hoje:' : 'Progresso da Diária:'} <strong>${secretMoney(todayIncome)}</strong> de <strong>${money(rentDaily)}</strong>
+            </span>
+            <span style="font-size: 17px; font-weight: 800; color: ${isPaid ? 'var(--green)' : '#38bdf8'}; font-family: 'JetBrains Mono', monospace;">
+              ${pct}%
+            </span>
+          </div>
+          <progress value="${pct}" max="100" style="height: 10px; width: 100%; border-radius: 6px;"></progress>
+        </div>
+
+        <p style="margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--text);">
+          ${isPaid 
+            ? `Sensacional! A diária da locadora de hoje está <strong>100% quitada</strong>. Você já colocou <strong style="color: var(--green); font-size: 15px;">+${secretMoney(profitAfterCar)}</strong> de lucro líquido direto no seu bolso!`
+            : `Faltam <strong style="color: #ea580c;">${secretMoney(remaining)}</strong> em corridas para cobrir a locadora hoje. A partir desse valor, todo dinheiro que entrar é 100% seu!`}
+        </p>
+      </div>
+    </div>
+  `;
+}
  function dashboard(){
   const t=totals(selected()),today=totals(state().entries.filter(e=>e.date===dateKey())),reserve=round(t.km*state().reservePerKm);
   const p=state().profile;let alertHtml='';
@@ -325,10 +380,20 @@ function economyCard(t){
   if (window.CapitalexNotifier && window.CapitalexNotifier.isSupported() && window.CapitalexNotifier.getPermission() === 'default' && !localStorage.getItem('capitalex_reminders_dismissed')) {
     reminderBanner = `<div class="card feature reminder-banner" style="background:linear-gradient(135deg,rgba(40,80,120,0.5),rgba(20,40,70,0.7));border:1px solid #3875a8;color:#d5e8ff;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 18px;border-radius:12px;"><div><strong style="display:flex;align-items:center;gap:6px;font-size:15px;color:#fff;">🔔 Ativar Lembretes Diários</strong><p style="margin:4px 0 0;font-size:13px;color:#bcd2ea">Receba bênçãos de bom dia e lembretes para não esquecer de anotar corridas (07:00, 12:30, 17:30 e 21:30).</p></div><div style="display:flex;gap:8px;align-items:center;"><button class="primary" data-action="enable-reminders" style="white-space:nowrap;padding:8px 16px;font-size:13px;">Ativar Agora</button><button class="ghost" data-action="dismiss-reminders" style="padding:8px 12px;font-size:13px;" title="Depois">✕</button></div></div>`;
   }
+  const isRent = p.vehicleType === 'rent';
   const ipvaTotalDash = (state().funds||[]).filter(f=>f&&f.name&&(f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva')||f.name.toLowerCase().includes('seguro'))).reduce((a,f)=>a+Number(f.amount||0),0);
   const targetIpvaDash = Number(localStorage.getItem('cap_ipva_goal'))||Number(state().profile.ipvaGoal)||2400;
   const pctIpvaDash = Math.min(100, Math.round((ipvaTotalDash/targetIpvaDash)*100));
-  return `${alertHtml}${reminderBanner}${cards(t)}${economyCard(t)}${bestDayCard()}<div class="split"><section class="panel"><div class="panel-head"><div><h2>Ritmo da semana</h2><p>7 dias até a data final do período • valores em R$</p></div><span class="tag">7 DIAS</span></div>${chart()}</section><section class="panel">${goalPanel('Sua meta de hoje',today.net,state().goals.daily,'Meta sobre o saldo, antes das reservas estimadas.')}<div class="actions" style="margin-top:20px"><button class="primary" data-action="income">🚗 Nova Corrida</button><button class="ghost" data-action="expense">⛽ Novo Gasto</button><button class="ghost" data-action="daily">⚡ Fechar Dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;"><span style="font-size:15px;">📸</span> Card do Dia</button></div></section></div><section class="panel" style="margin-bottom:22px"><div class="panel-head"><div><h2>Para onde foi o dinheiro</h2><p>Despesas do período, por categoria</p></div><a href="#gastos" class="positive">Ver despesas</a></div>${donut()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Últimos lançamentos</h2><a href="#corridas" class="positive">Ver ganhos</a></div>${table([...selected()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5))}</section><section class="panel"><h2>Olhar para o próximo mês</h2><p class="muted">Provisão estimada para o desgaste do carro.</p><div class="list-row"><span>Reserva sugerida</span><strong>${money(reserve)}</strong></div><div class="list-row"><span>Saldo após provisão</span><strong class="positive">${money(t.net-reserve)}</strong></div><div class="list-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);"><span>🛡️ IPVA & Seguro</span><strong><a href="#investimentos" style="color:var(--green);text-decoration:none;font-weight:750;">${pctIpvaDash}% blindado (${money(ipvaTotalDash)}) ➔</a></strong></div><p class="notice">Estimativa de ${money(state().reservePerKm)} por km. Não movimenta dinheiro e não é uma despesa paga. Ajuste em Veículo.</p></section></div>`;
+
+  const rentWeeklyDash = Number(p.rentWeekly) || 650;
+  const rentSavedDash = (state().funds||[]).filter(f=>f&&f.name&&(f.name.toLowerCase().includes('aluguel')||f.name.toLowerCase().includes('locadora'))).reduce((a,f)=>a+Number(f.amount||0),0);
+  const pctRentDash = rentWeeklyDash > 0 ? Math.min(100, Math.round((rentSavedDash/rentWeeklyDash)*100)) : 100;
+
+  const cofreLinkHtml = isRent
+    ? `<span>🏢 Cofre do Aluguel</span><strong><a href="#investimentos" style="color:#38bdf8;text-decoration:none;font-weight:750;">${pctRentDash}% garantido (${money(rentSavedDash)}) ➔</a></strong>`
+    : `<span>🛡️ IPVA & Seguro</span><strong><a href="#investimentos" style="color:var(--green);text-decoration:none;font-weight:750;">${pctIpvaDash}% blindado (${money(ipvaTotalDash)}) ➔</a></strong>`;
+
+  return `${alertHtml}${reminderBanner}${metaZeroCard()}${cards(t)}${economyCard(t)}${bestDayCard()}<div class="split"><section class="panel"><div class="panel-head"><div><h2>Ritmo da semana</h2><p>7 dias até a data final do período • valores em R$</p></div><span class="tag">7 DIAS</span></div>${chart()}</section><section class="panel">${goalPanel('Sua meta de hoje',today.net,state().goals.daily,'Meta sobre o saldo, antes das reservas estimadas.')}<div class="actions" style="margin-top:20px"><button class="primary" data-action="income">🚗 Nova Corrida</button><button class="ghost" data-action="expense">⛽ Novo Gasto</button><button class="ghost" data-action="daily">⚡ Fechar Dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;"><span style="font-size:15px;">📸</span> Card do Dia</button></div></section></div><section class="panel" style="margin-bottom:22px"><div class="panel-head"><div><h2>Para onde foi o dinheiro</h2><p>Despesas do período, por categoria</p></div><a href="#gastos" class="positive">Ver despesas</a></div>${donut()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Últimos lançamentos</h2><a href="#corridas" class="positive">Ver ganhos</a></div>${table([...selected()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5))}</section><section class="panel"><h2>Olhar para o próximo mês</h2><p class="muted">Provisão estimada para o desgaste do carro.</p><div class="list-row"><span>Reserva sugerida</span><strong>${money(reserve)}</strong></div><div class="list-row"><span>Saldo após provisão</span><strong class="positive">${money(t.net-reserve)}</strong></div><div class="list-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);">${cofreLinkHtml}</div><p class="notice">Estimativa de ${money(state().reservePerKm)} por km. Não movimenta dinheiro e não é uma despesa paga. Ajuste em Veículo.</p></section></div>`;
  }
 function gains(){return `<section class="panel"><div class="panel-head"><div><h2>Seu trabalho registrado</h2><p>Escolha corridas individuais ou um fechamento completo por dia.</p></div><div class="actions"><button class="primary" data-action="daily">Fechar dia</button><button class="ghost" onclick="window.gerarCardWhatsApp()" style="border-color:#24534f;color:#34d6ac;font-weight:700;">📸 Card do Dia</button></div></div><p class="notice">O fechamento soma todos os aplicativos. Para evitar duplicidade, um dia com corridas individuais não aceita fechamento até que esses registros sejam removidos.</p>${table(selected().filter(e=>e.type==='income'))}</section>`;}
 function expenses(){return `<div class="split"><section class="panel"><div class="panel-head"><h2>Despesas do período</h2><button data-action="expense" class="primary">+ Gasto</button></div>${table(selected().filter(e=>e.type==='expense'))}</section><section class="panel"><h2>Despesas por categoria</h2><p class="muted">Valores e participação no período selecionado.</p>${donut()}</section></div>`;}
@@ -432,6 +497,67 @@ function vehicle(){
     </section>
   ` : '';
 
+  const vistoriaData = JSON.parse(localStorage.getItem('cap_rent_vistoria') || '{}');
+  const hasVistoria = !!vistoriaData.locadora || !!vistoriaData.dataRetirada;
+
+  const vistoriaHtml = isRent ? `
+    <section class="panel vistoria-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div>
+          <span class="tag" style="background:rgba(52,214,172,0.15);color:var(--green);font-weight:800;font-size:11px;letter-spacing:1px;margin-bottom:6px;display:inline-block;">PROTEÇÃO OPERACIONAL</span>
+          <h2 style="font-size:20px;margin:2px 0;color:var(--text);font-weight:800;">🛡️ Dossiê Anti-Golpe de Avaria da Locadora</h2>
+          <p class="muted" style="margin:4px 0 0;font-size:13.5px;">Seu registro oficial da retirada do carro para contestar cobranças indevidas de funilaria, pneus e peças.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="primary" onclick="window.abrirVistoriaModal()">📝 ${hasVistoria ? 'Editar Dossiê' : 'Fazer Vistoria Agora'}</button>
+          ${hasVistoria ? `<button class="ghost" onclick="window.imprimirVistoria()" style="border-color:#38bdf8;color:#38bdf8;font-weight:700;">🖨️ Imprimir / PDF</button>` : ''}
+        </div>
+      </div>
+
+      ${hasVistoria ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">
+          <div class="vistoria-box-item" style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+            <small style="color:var(--muted);font-size:11px;text-transform:uppercase;">Locadora / Frota</small>
+            <strong style="font-size:16px;color:var(--text);display:block;margin-top:2px;">${esc(vistoriaData.locadora || 'Não informada')}</strong>
+          </div>
+          <div class="vistoria-box-item" style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+            <small style="color:var(--muted);font-size:11px;text-transform:uppercase;">Data da Retirada</small>
+            <strong style="font-size:16px;color:var(--text);display:block;margin-top:2px;">${displayDate(vistoriaData.dataRetirada) || 'Não informada'}</strong>
+          </div>
+          <div class="vistoria-box-item" style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+            <small style="color:var(--muted);font-size:11px;text-transform:uppercase;">KM na Retirada</small>
+            <strong style="font-size:16px;color:#38bdf8;font-family:'JetBrains Mono',monospace;display:block;margin-top:2px;">${number(vistoriaData.kmRetirada || 0)} km</strong>
+          </div>
+          <div class="vistoria-box-item" style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+            <small style="color:var(--muted);font-size:11px;text-transform:uppercase;">Tanque na Saída</small>
+            <strong style="font-size:16px;color:var(--green);display:block;margin-top:2px;">${esc(vistoriaData.tanque || 'Cheio (8/8)')}</strong>
+          </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;">
+          <h4 style="margin:0 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Itens Verificados na Saída</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${(vistoriaData.itens || []).map(it => `<span class="tag" style="background:rgba(52,214,172,0.15);color:var(--green);font-size:12px;padding:4px 10px;">✓ ${esc(it)}</span>`).join('') || '<span class="muted">Nenhum item marcado</span>'}
+          </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;">
+          <h4 style="margin:0 0 6px;font-size:13px;color:var(--orange);text-transform:uppercase;letter-spacing:0.5px;">⚠️ Avarias e Detalhes Pré-existentes Anotados</h4>
+          <p style="margin:0;font-size:13.5px;color:var(--text);line-height:1.5;">${esc(vistoriaData.avarias || 'Nenhuma avaria prévia anotada.')}</p>
+        </div>
+      ` : `
+        <div style="text-align:center;padding:24px 16px;border:1px dashed var(--line);border-radius:14px;margin-bottom:12px;">
+          <p style="color:var(--muted);margin:0 0 12px;font-size:14px;">Você ainda não registrou o dossiê deste carro. Ao pegar o veículo na locadora, anote as avarias e tire fotos de todos os ângulos para não pagar conserto de riscos que já estavam lá!</p>
+          <button class="primary" onclick="window.abrirVistoriaModal()">📋 Iniciar Checklist de Retirada</button>
+        </div>
+      `}
+
+      <p class="notice" style="font-size:12px;margin:0;">
+        💡 <strong>Dica de Ouro Anti-Golpe:</strong> Fotografe hodômetro, marcador de combustível, os 4 pneus, teto, estepe e os 4 cantos do para-choque. Guarde no seu Google Fotos/WhatsApp com data carimbada. Em caso de cobrança indevida, este dossiê tem valor probatório.
+      </p>
+    </section>
+  ` : '';
+
   const maintenanceHtml = !isRent ? `
     <section class="panel" style="margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
@@ -518,6 +644,7 @@ function vehicle(){
   return `
     ${summaryCards}
     ${heroRentHtml}
+    ${vistoriaHtml}
     ${maintenanceHtml}
     <section class="panel">
       <h2>Planejamento do veículo</h2>
@@ -540,16 +667,93 @@ function vehicle(){
 function funds(){
   const s=state();
   const allFunds = s.funds || [];
+  const isRent = s.profile.vehicleType === 'rent';
+  const rentWeekly = Number(s.profile.rentWeekly) || 650;
+  const rentWorkDays = Number(s.profile.rentWorkDays) || 6;
+  const rentDaily = round(rentWeekly / Math.max(1, rentWorkDays));
+  const rentDay = s.profile.rentDay || 'Sexta';
+
+  const rentRes = allFunds.filter(f=>f&&f.name&&(f.name.toLowerCase().includes('aluguel')||f.name.toLowerCase().includes('locadora'))).reduce((a,f)=>a+Number(f.amount||0),0);
+  const pctRent = rentWeekly > 0 ? Math.min(100, Math.round((rentRes / rentWeekly) * 100)) : 100;
+  const offsetRent = 157 - (157 * Math.min(100, pctRent) / 100);
+
   const ipvaRes=allFunds.filter(f=>f&&f.name&&(f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva')||f.name.toLowerCase().includes('seguro'))).reduce((a,f)=>a+Number(f.amount||0),0);
   const eRes=allFunds.filter(f=>f&&f.name==='Reserva de emergência').reduce((a,f)=>a+Number(f.amount||0),0);
   const fRes=allFunds.filter(f=>f&&f.name==='Férias e 13º').reduce((a,f)=>a+Number(f.amount||0),0);
   const total=round(allFunds.reduce((a,f)=>a+Number(f?.amount||0),0));
-  const outros=Math.max(0,round(total-ipvaRes-eRes-fRes));
+  const outros=Math.max(0,round(total-(isRent?rentRes:ipvaRes)-eRes-fRes));
   const targetIpva=Number(localStorage.getItem('cap_ipva_goal'))||Number(s.profile.ipvaGoal)||2400;
   const pctIpva=Math.min(100,Math.round((ipvaRes/targetIpva)*100));
-  const offset=157-(157*Math.min(100,pctIpva)/100);
+  const offsetIpva=157-(157*Math.min(100,pctIpva)/100);
 
-  const heroCard=`
+  const heroCard = isRent ? `
+    <section class="panel cofre-aluguel-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;">
+        <div style="max-width:540px;">
+          <span class="tag" style="background:rgba(56,189,248,0.2);color:#38bdf8;font-weight:800;font-size:11px;letter-spacing:1px;margin-bottom:8px;display:inline-block;">PROTEÇÃO CONTRA JUROS DA LOCADORA</span>
+          <h2 style="font-size:22px;margin:4px 0 6px;color:var(--text);font-weight:800;display:flex;align-items:center;gap:8px;">
+            🏢 Cofre Blindado do Aluguel da Semana
+          </h2>
+          <p class="muted" style="margin:0;font-size:13.5px;line-height:1.5;">
+            Chegue em toda <strong>${rentDay}</strong> com o aluguel garantido. Guarde a diária de <strong>${money(rentDaily)}</strong> a cada dia trabalhado e nunca caia no rotativo de 14% do cartão.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="primary" onclick="window.guardarDiariaAluguel()" style="white-space:nowrap;padding:10px 16px;background:#38bdf8;border-color:#38bdf8;color:#081320;font-weight:800;">+ Guardar Diária (${money(rentDaily)})</button>
+          <button class="ghost" data-action="vehicle" style="white-space:nowrap;padding:10px 14px;font-size:13px;" title="Clique para alterar valor semanal">⚙️ Aluguel: ${money(rentWeekly)}/sem</button>
+        </div>
+      </div>
+
+      <div class="ipva-hero-grid">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;width:180px;">
+          <svg viewBox="0 0 120 70" style="width:180px;height:105px;overflow:visible;">
+            <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="11" stroke-linecap="round" />
+            <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="url(#rentGaugeGrad)" stroke-width="11" stroke-linecap="round"
+              stroke-dasharray="157" stroke-dashoffset="${offsetRent.toFixed(1)}" style="transition: stroke-dashoffset 0.8s ease;" />
+            <defs>
+              <linearGradient id="rentGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#34d6ac" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div style="position:absolute;bottom:12px;text-align:center;">
+            <span style="font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#38bdf8;line-height:1;display:block;">
+              ${pctRent}%
+            </span>
+            <span style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">
+              GARANTIDO
+            </span>
+          </div>
+        </div>
+
+        <div style="width:100%;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;">
+            <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+              <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Blindado no Cofre</small>
+              <strong style="font-size:20px;color:#38bdf8;font-family:'JetBrains Mono',monospace;">${secretMoney(rentRes)}</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+              <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Aluguel Semanal</small>
+              <strong style="font-size:20px;color:var(--text);font-family:'JetBrains Mono',monospace;">${money(rentWeekly)}</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
+              <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Falta Guardar</small>
+              <strong style="font-size:20px;color:${rentWeekly-rentRes<=0?'var(--green)':'#f87171'};font-family:'JetBrains Mono',monospace;">
+                ${rentWeekly-rentRes<=0?'Aluguel Pago! 🏆':secretMoney(rentWeekly-rentRes)}
+              </strong>
+            </div>
+          </div>
+
+          <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);">
+            ${pctRent>=100 
+              ? `🔥 <strong>Aluguel da semana 100% garantido!</strong> Sua cobrança de ${rentDay} está paga e você roda com a cabeça leve.`
+              : `🏢 <strong>${pctRent}% do aluguel garantido!</strong> Guarde a diária de ${money(rentDaily)} a cada dia trabalhado para fechar a semana no verde.`}
+          </div>
+        </div>
+      </div>
+    </section>
+  ` : `
     <section class="panel ipva-blindada-hero">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;">
         <div style="max-width:540px;">
@@ -568,12 +772,11 @@ function funds(){
       </div>
 
       <div class="ipva-hero-grid">
-        <!-- SVG Velocímetro -->
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;width:180px;">
           <svg viewBox="0 0 120 70" style="width:180px;height:105px;overflow:visible;">
             <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="11" stroke-linecap="round" />
             <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="url(#ipvaGaugeGrad)" stroke-width="11" stroke-linecap="round"
-              stroke-dasharray="157" stroke-dashoffset="${offset.toFixed(1)}" style="transition: stroke-dashoffset 0.8s ease;" />
+              stroke-dasharray="157" stroke-dashoffset="${offsetIpva.toFixed(1)}" style="transition: stroke-dashoffset 0.8s ease;" />
             <defs>
               <linearGradient id="ipvaGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stop-color="#38bdf8" />
@@ -591,7 +794,6 @@ function funds(){
           </div>
         </div>
 
-        <!-- Estatísticas da Proteção -->
         <div style="width:100%;">
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;">
             <div style="background:rgba(255,255,255,0.03);padding:12px 14px;border-radius:12px;border:1px solid var(--line);">
@@ -620,17 +822,25 @@ function funds(){
     </section>
   `;
 
+  const rentGridCard = isRent ? `<section class="panel">${goalPanel('🏢 Aluguel da Semana',rentRes,rentWeekly,`Meta para quitação de toda ${rentDay}.`)}</section>` : '';
+
   return `
     ${heroCard}
     <div class="settings-grid">
-      <section class="panel">${goalPanel('🛡️ Reserva de Emergência',eRes,s.goals.reserve,'Para imprevistos mecânicos e dias parados.')}</section>
+      ${rentGridCard}
+      <section class="panel">${goalPanel('🛡️ Reserva de Emergência',eRes,s.goals.reserve,'Para imprevistos e dias parados.')}</section>
       <section class="panel">${goalPanel('🏖️ Férias e 13º',fRes,s.goals.reserve>0?s.goals.reserve/2:0,'O seu descanso merecido.')}</section>
-      <section class="panel">${goalPanel('📦 Outras Caixinhas',outros,0,'Pneus novos, acessórios e extras.')}</section>
+      <section class="panel">${goalPanel('📦 Outras Caixinhas',outros,0,'Pneus, acessórios e extras.')}</section>
     </div>
     <section class="panel" style="margin-top:20px">
       <h2>Extrato das Caixinhas</h2>
-      <p class="muted">Dinheiro separado para os seus objetivos e proteção anual.</p>
-      ${s.funds.length?`<div class="table-wrap"><table class="funds-table"><thead><tr><th>Data / Caixinha</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...s.funds].reverse().map(f=>`<tr><td>${displayDate(f.date)}<br><strong>${esc(f.name)}</strong>${(f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva'))?' <span class="tag" style="background:rgba(52,214,172,0.2);color:#34d6ac;font-size:10px;padding:2px 6px;">🛡️ BLINDADA</span>':''}</td><td class="positive">${secretMoney(f.amount)}</td><td><button data-fund-edit="${esc(f.id)}">Editar</button> <button data-fund-delete="${esc(f.id)}" class="ghost danger">Excluir</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhuma caixinha criada','Toque em Guardar dinheiro para começar.')}
+      <p class="muted">Dinheiro separado para os seus objetivos e proteção.</p>
+      ${s.funds.length?`<div class="table-wrap"><table class="funds-table"><thead><tr><th>Data / Caixinha</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${[...s.funds].reverse().map(f=>{
+        const isRentF = f.name && (f.name.toLowerCase().includes('aluguel')||f.name.toLowerCase().includes('locadora'));
+        const isIpvaF = f.name && (f.name==='IPVA e Seguro'||f.name.toLowerCase().includes('ipva'));
+        const badge = isRentF ? ' <span class="tag" style="background:rgba(56,189,248,0.2);color:#38bdf8;font-size:10px;padding:2px 6px;">🏢 ALUGUEL</span>' : (isIpvaF ? ' <span class="tag" style="background:rgba(52,214,172,0.2);color:#34d6ac;font-size:10px;padding:2px 6px;">🛡️ BLINDADA</span>' : '');
+        return `<tr><td>${displayDate(f.date)}<br><strong>${esc(f.name)}</strong>${badge}</td><td class="positive">${secretMoney(f.amount)}</td><td><button data-fund-edit="${esc(f.id)}">Editar</button> <button data-fund-delete="${esc(f.id)}" class="ghost danger">Excluir</button></td></tr>`;
+      }).join('')}</tbody></table></div>`:empty('Nenhuma caixinha criada','Toque em Guardar dinheiro para começar.')}
     </section>
   `;
 }
@@ -665,51 +875,102 @@ function profile(){
   const refLink = window.location.origin + '/?ref=' + encodeURIComponent(userEmail);
   const waMsg = encodeURIComponent(`Fala parceiro! Tô usando o Capitalex Driver pra controlar meus ganhos da Uber e 99 e ver meu lucro líquido de verdade. Entra pelo meu link que você ganha 10 DIAS GRÁTIS de teste: ${refLink}`);
 
+  const billing = window.CapitalexSession?.billing || { active: false, daysLeft: 0, isTrial: false };
+  const isTrial = Boolean(billing.isTrial);
+  const daysLeft = Number(billing.daysLeft) || 0;
+  const badgeLabel = isTrial ? 'TESTE GRÁTIS' : (billing.active ? 'PLANO ATIVO' : 'EXPIRADO');
+  const badgeColor = isTrial ? '#fbbf24' : (billing.active ? 'var(--primary)' : '#f87171');
+
+  const subscriptionHtml = `
+    <section class="panel" style="border-left: 4px solid var(--green);">
+      <div class="panel-head">
+        <div>
+          <h2>💎 Minha Assinatura & Acesso</h2>
+          <p class="muted">Status da sua conta, validade e renovação Pix.</p>
+        </div>
+        <span class="tag" style="background: ${badgeColor}; color: #081320; font-weight: 800;">${badgeLabel}</span>
+      </div>
+
+      <div class="list-row">
+        <span>E-mail da Conta</span>
+        <strong>${esc(userEmail || 'Conectado')}</strong>
+      </div>
+      <div class="list-row">
+        <span>Tempo Restante</span>
+        <strong style="color: ${daysLeft <= 3 ? '#ea580c' : 'var(--green)'}; font-size: 1.05rem;">
+          ${daysLeft > 0 ? `${daysLeft} dia${daysLeft > 1 ? 's' : ''}` : 'Vencido'}
+        </strong>
+      </div>
+      <div class="list-row">
+        <span>Status do Sistema</span>
+        <strong>${billing.active ? '🟢 Acesso 100% Liberado' : '🔴 Assinatura Pendente'}</strong>
+      </div>
+
+      <div class="actions" style="margin-top: 16px;">
+        <button type="button" class="primary" onclick="window.Account?.showPaywall ? window.Account.showPaywall() : document.getElementById('accountMenu')?.click()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 800;">
+          ⚡ Renovar ou Mudar de Plano (Pix)
+        </button>
+      </div>
+    </section>
+  `;
+
   const referralHtml = userEmail ? `
-    <section class="panel full" style="border: 1px solid var(--primary); background: linear-gradient(135deg, rgba(52, 214, 172, 0.08), rgba(18, 30, 45, 0.95));">
+    <section class="panel full" style="border-left: 4px solid var(--green);">
       <div class="panel-head">
         <div>
           <h2>🤝 Indique e Ganhe (Ganha-Ganha)</h2>
           <p class="muted">Seu amigo ganha <strong>10 dias de teste grátis</strong> (em vez de 7) e você ganha no Pix: <strong>R$ 8,00</strong> todo mês ou <strong>R$ 25,00</strong> no trimestral, podendo abater na sua assinatura!</p>
         </div>
-        <span class="tag" style="background: var(--primary); color: #081320; font-weight: 800;">GANHA-GANHA</span>
+        <span class="tag" style="background: var(--green); color: #081320; font-weight: 800;">GANHA-GANHA</span>
       </div>
       
       <div class="cards" style="margin-bottom: 20px;">
-        <div class="card"><span class="card-title">Amigos Ativos</span><span class="card-val">${refData.active_referrals || 0}</span><small>Mensalidade em dia</small></div>
-        <div class="card"><span class="card-title">Saldo a Receber</span><span class="card-val positive">${money(refData.balance || 0)}</span><small>Comissões no Pix</small></div>
-        <div class="card"><span class="card-title">Total Já Ganho</span><span class="card-val">${money(refData.total_earned || 0)}</span><small>Acumulado total</small></div>
+        <div class="card">
+          <div class="label">Amigos Ativos</div>
+          <div class="value">${refData.active_referrals || 0}</div>
+          <small class="muted">Mensalidade em dia</small>
+        </div>
+        <div class="card">
+          <div class="label">Saldo a Receber</div>
+          <div class="value positive">${money(refData.balance || 0)}</div>
+          <small class="muted">Comissões no Pix</small>
+        </div>
+        <div class="card">
+          <div class="label">Total Já Ganho</div>
+          <div class="value">${money(refData.total_earned || 0)}</div>
+          <small class="muted">Acumulado total</small>
+        </div>
       </div>
 
-      <div style="background: var(--surface); padding: 16px; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 16px;">
-        <label style="font-weight: 700; margin-bottom: 6px; display: block;">Seu Link Exclusivo de Indicação</label>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <input type="text" readonly value="${esc(refLink)}" id="referralLinkInput" style="flex: 1; min-width: 220px; padding: 10px 14px; background: #060e18; border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-size: 0.9rem;" onclick="this.select()">
-          <button type="button" class="primary" onclick="copyRefLink()" style="white-space: nowrap;">📋 Copiar Link</button>
-          <a href="https://api.whatsapp.com/send?text=${waMsg}" target="_blank" rel="noopener noreferrer" style="background: #22c55e; color: #081320; font-weight: 800; text-decoration: none; padding: 10px 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+      <div style="background: var(--bg); padding: 16px; border-radius: 14px; border: 1px solid var(--line); margin-bottom: 16px;">
+        <label style="font-weight: 700; margin-bottom: 8px; display: block; color: var(--text);">Seu Link Exclusivo de Indicação</label>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <input type="text" readonly value="${esc(refLink)}" id="referralLinkInput" style="flex: 1; min-width: 220px; padding: 12px 14px; border-radius: 10px; font-size: 0.92rem; font-weight: 600;" onclick="this.select()">
+          <button type="button" class="primary" onclick="copyRefLink()" style="white-space: nowrap; padding: 12px 18px;">📋 Copiar Link</button>
+          <a href="https://api.whatsapp.com/send?text=${waMsg}" target="_blank" rel="noopener noreferrer" style="background: #22c55e; color: #ffffff; font-weight: 800; text-decoration: none; padding: 12px 18px; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);">
             📲 Mandar no WhatsApp
           </a>
         </div>
       </div>
 
-      <div style="background: var(--surface); padding: 16px; border-radius: 12px; border: 1px solid var(--line);">
-        <label style="font-weight: 700; margin-bottom: 6px; display: block;">Sua Chave Pix para Receber as Comissões</label>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-          <select id="pixKeyType" style="padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: #060e18; color: var(--text);">
+      <div style="background: var(--bg); padding: 16px; border-radius: 14px; border: 1px solid var(--line);">
+        <label style="font-weight: 700; margin-bottom: 8px; display: block; color: var(--text);">Sua Chave Pix para Receber as Comissões</label>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+          <select id="pixKeyType" style="padding: 12px; border-radius: 10px; width: auto; min-width: 130px; font-weight: 600;">
             <option value="CPF" ${refData.pix_key_type==='CPF'?'selected':''}>CPF</option>
             <option value="Telefone" ${refData.pix_key_type==='Telefone'?'selected':''}>Telefone</option>
             <option value="E-mail" ${refData.pix_key_type==='E-mail'?'selected':''}>E-mail</option>
             <option value="Aleatória" ${refData.pix_key_type==='Aleatória'?'selected':''}>Chave Aleatória</option>
           </select>
-          <input type="text" id="pixKeyInput" value="${esc(refData.pix_key||'')}" placeholder="Digite sua chave Pix..." style="flex: 1; min-width: 200px; padding: 10px 14px; background: #060e18; border: 1px solid var(--line); border-radius: 8px; color: var(--text);">
-          <button type="button" class="primary" onclick="salvarChavePix()" style="white-space: nowrap;">Salvar Chave Pix</button>
+          <input type="text" id="pixKeyInput" value="${esc(refData.pix_key||'')}" placeholder="Digite sua chave Pix..." style="flex: 1; min-width: 200px; padding: 12px 14px; border-radius: 10px;">
+          <button type="button" class="primary" onclick="salvarChavePix()" style="white-space: nowrap; padding: 12px 18px;">Salvar Chave Pix</button>
         </div>
-        <small class="muted" style="display: block; margin-top: 6px;">O administrador transfere suas comissões diretamente para essa chave quando o saldo acumular.</small>
+        <small class="muted" style="display: block; margin-top: 8px;">O administrador transfere suas comissões diretamente para essa chave quando o saldo acumular.</small>
       </div>
     </section>
   ` : '';
 
-  return `<div class="settings-grid">${referralHtml}<section class="panel"><h2>${esc(state().profile.name)||'Seu perfil'}</h2><p class="muted">Personalize a sua experiência.</p><div class="actions"><button data-action="profile" class="primary">Editar nome</button><button data-action="theme" class="ghost">🌓 Trocar Tema (Claro/Escuro)</button></div><p class="notice">Seus registros ficam vinculados à sua conta. Encerre a sessão em aparelhos compartilhados. Não cadastre dados de passageiros.</p></section><section class="panel"><h2>🔔 Lembretes e Bênçãos Diárias</h2><p class="muted">Receba mensagens abençoadas e lembretes para fechar seus ganhos (07:00, 12:30, 17:30 e 21:30).</p><div class="actions"><button data-action="enable-reminders" class="primary">${notifGranted?'✅ Lembretes Ativados':'🔔 Ativar Lembretes'}</button><button data-action="test-reminder" class="ghost">📲 Testar Lembrete Agora</button></div><p class="notice">Funciona diretamente no celular ou computador, mesmo com a aba em segundo plano.</p></section><section class="panel"><h2>Backup e recuperação</h2><p class="muted">Faça o download dos seus dados por segurança ou quando for trocar de celular.</p><div class="actions"><button data-action="backup" class="primary" ${storageIssue&&!demo?'disabled':''}>Baixar backup</button><button data-action="import" ${demo?'disabled':''}>Restaurar arquivo</button><button data-action="recovery" ${demo?'disabled':''}>Recuperar versão anterior</button></div><p class="notice">A cada gravação, a versão anterior fica guardada na sua conta. Exporte também uma cópia própria dos registros.</p>${storageIssue?'<button data-action="raw">Exportar dados originais para recuperação</button>':''}</section><section class="panel full"><h2>Lixeira recuperável</h2><p class="muted">Exclusões ficam guardadas na sua conta e também entram no backup. Restaurar não duplica ganhos já existentes.</p>${trash.length?`<div class="table-wrap"><table class="trash-table"><thead><tr><th>Excluído em</th><th>Registro</th><th>Valor</th><th>Ação</th></tr></thead><tbody>${[...trash].reverse().map(t=>`<tr><td>${displayDate(t.deletedAt)}</td><td>${esc(t.item.name||t.item.category||t.item.app)}<br><small>${displayDate(t.item.date)}</small></td><td>${money(t.item.amount)}</td><td><button data-restore="${esc(t.trashId)}">Restaurar</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhum registro excluído','Se você excluir um lançamento, poderá recuperá-lo aqui.')}</section><section class="panel"><h2>Seus dados e a privacidade</h2><p class="muted">Seus lançamentos são enviados ao servidor por conexão segura e ficam separados por conta. O pagamento é realizado diretamente via Pix de forma segura.</p><p class="notice">Os backups JSON contêm dados financeiros sem criptografia. Guarde-os em local protegido. Esta versão não substitui a proteção e a senha do seu aparelho.</p></section><section class="panel"><h2>Demonstração isolada</h2><p class="muted">Explore gráficos com dados fictícios sem misturá-los aos seus lançamentos.</p><button data-action="demo">${demo?'Sair da demonstração':'Explorar demonstração'}</button></section><section class="panel full" style="border:1px dashed var(--line);background:rgba(10,23,37,0.3);text-align:center;padding:16px;"><p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong>Aviso Legal:</strong> Uber, 99 e inDrive são marcas registradas de seus respectivos proprietários. O Capitalex Driver é um utilitário independente de gestão operacional pessoal sem vínculo ou representação com referidas empresas. Os demonstrativos têm caráter gerencial e estimativo com base nos lançamentos informados pelo usuário.</p><div style="font-size:12px;"><a href="termos.html" target="_blank" style="color:var(--green);text-decoration:underline;">Termos de Uso</a> • <a href="privacidade.html" target="_blank" style="color:var(--green);text-decoration:underline;">Política de Privacidade (LGPD)</a></div></section></div>`;
+  return `<div class="settings-grid">${referralHtml}${subscriptionHtml}<section class="panel"><h2>${esc(state().profile.name)||'Seu perfil'}</h2><p class="muted">Personalize a sua experiência.</p><div class="actions"><button data-action="profile" class="primary">Editar nome</button><button data-action="theme" class="ghost">🌓 Trocar Tema (Claro/Escuro)</button></div><p class="notice">Seus registros ficam vinculados à sua conta. Encerre a sessão em aparelhos compartilhados. Não cadastre dados de passageiros.</p></section><section class="panel"><h2>🔔 Lembretes e Bênçãos Diárias</h2><p class="muted">Receba mensagens abençoadas e lembretes para fechar seus ganhos (07:00, 12:30, 17:30 e 21:30).</p><div class="actions"><button data-action="enable-reminders" class="primary">${notifGranted?'✅ Lembretes Ativados':'🔔 Ativar Lembretes'}</button><button data-action="test-reminder" class="ghost">📲 Testar Lembrete Agora</button></div><p class="notice">Funciona diretamente no celular ou computador, mesmo com a aba em segundo plano.</p></section><section class="panel"><h2>Backup e recuperação</h2><p class="muted">Faça o download dos seus dados por segurança ou quando for trocar de celular.</p><div class="actions"><button data-action="backup" class="primary" ${storageIssue&&!demo?'disabled':''}>Baixar backup</button><button data-action="import" ${demo?'disabled':''}>Restaurar arquivo</button><button data-action="recovery" ${demo?'disabled':''}>Recuperar versão anterior</button></div><p class="notice">A cada gravação, a versão anterior fica guardada na sua conta. Exporte também uma cópia própria dos registros.</p>${storageIssue?'<button data-action="raw">Exportar dados originais para recuperação</button>':''}</section><section class="panel full"><h2>Lixeira recuperável</h2><p class="muted">Exclusões ficam guardadas na sua conta e também entram no backup. Restaurar não duplica ganhos já existentes.</p>${trash.length?`<div class="table-wrap"><table class="trash-table"><thead><tr><th>Excluído em</th><th>Registro</th><th>Valor</th><th>Ação</th></tr></thead><tbody>${[...trash].reverse().map(t=>`<tr><td>${displayDate(t.deletedAt)}</td><td>${esc(t.item.name||t.item.category||t.item.app)}<br><small>${displayDate(t.item.date)}</small></td><td>${money(t.item.amount)}</td><td><button data-restore="${esc(t.trashId)}">Restaurar</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhum registro excluído','Se você excluir um lançamento, poderá recuperá-lo aqui.')}</section><section class="panel"><h2>Seus dados e a privacidade</h2><p class="muted">Seus lançamentos são enviados ao servidor por conexão segura e ficam separados por conta. O pagamento é realizado diretamente via Pix de forma segura.</p><p class="notice">Os backups JSON contêm dados financeiros sem criptografia. Guarde-os em local protegido. Esta versão não substitui a proteção e a senha do seu aparelho.</p></section><section class="panel"><h2>Demonstração isolada</h2><p class="muted">Explore gráficos com dados fictícios sem misturá-los aos seus lançamentos.</p><button data-action="demo">${demo?'Sair da demonstração':'Explorar demonstração'}</button></section><section class="panel full" style="border:1px dashed var(--line);background:rgba(10,23,37,0.3);text-align:center;padding:16px;"><p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong>Aviso Legal:</strong> Uber, 99 e inDrive são marcas registradas de seus respectivos proprietários. O Capitalex Driver é um utilitário independente de gestão operacional pessoal sem vínculo ou representação com referidas empresas. Os demonstrativos têm caráter gerencial e estimativo com base nos lançamentos informados pelo usuário.</p><div style="font-size:12px;"><a href="termos.html" target="_blank" style="color:var(--green);text-decoration:underline;">Termos de Uso</a> • <a href="privacidade.html" target="_blank" style="color:var(--green);text-decoration:underline;">Política de Privacidade (LGPD)</a></div></section></div>`;
 }
 window.copyRefLink = () => {
   const inp = document.getElementById('referralLinkInput');
@@ -920,7 +1181,22 @@ const categories=['Combustível','Alimentação','Manutenção','Seguro','Alugue
 function openForm(type,id){const s=state(),e=s.entries.find(e=>e.id===id)||s.funds.find(e=>e.id===id)||{};formContext={type,id};dirty=false;let title='',fields='';const date=input('date','Data',e.date||dateKey(),'date',`required min="2000-01-01" max="${dateKey()}"`);const amount=input('amount','Valor (R$)',e.amount??'','number','required min="0.01" step="0.01" max="10000000" inputmode="decimal"');if(type==='income'){title=id?'Editar corrida':'Registrar corrida';const ocrBtn='<div class="full" style="margin-bottom:12px"><button type="button" data-action="ocr" style="width:100%;background:rgba(52, 214, 172, 0.1);color:var(--primary);border:1px dashed var(--primary);font-weight:bold;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;margin-right:6px;vertical-align:-4px;"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z"/><circle cx="12" cy="13" r="4"/></svg> Ler Print (Auto-preencher Valor)</button></div>';const quickIncome = `<div class="full" style="display:flex;gap:8px;margin-bottom:6px;margin-top:-6px;overflow-x:auto;padding-bottom:4px;"><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='10.00'">R$ 10</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='15.00'">R$ 15</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='20.00'">R$ 20</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px" onclick="document.querySelector('input[name=amount]').value='30.00'">R$ 30</button></div>`;fields=ocrBtn+date+select('app','Aplicativo',['Uber','99','inDrive','Particular','Outros'],e.app)+amount+quickIncome+input('km','Quilômetros registrados (Opcional)',e.km??'','number','min="0" step="0.1" max="100000" inputmode="decimal"')+input('minutes','Tempo (Minutos) (Opcional)',e.hours?round(e.hours*60):'','number','min="0" max="1440" step="1" inputmode="numeric"')+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Para incluir espera e todos os deslocamentos no resultado por hora/km, prefira o fechamento diário.</p>';}
 if(type==='daily'){
   title=id?'Editar fechamento':'Fechar dia';
-  const autoIpvaField = `
+  const isRent = s.profile.vehicleType === 'rent';
+  const rentWeekly = Number(s.profile.rentWeekly) || 650;
+  const rentWorkDays = Number(s.profile.rentWorkDays) || 6;
+  const rentDaily = round(rentWeekly / Math.max(1, rentWorkDays));
+
+  const autoBlindarField = isRent ? `
+    <div class="full" style="background:linear-gradient(135deg,rgba(56,189,248,0.1),rgba(15,35,55,0.7)); border:1.5px solid rgba(56,189,248,0.35); border-radius:14px; padding:14px 16px; margin:6px 0;">
+      <label style="display:flex; align-items:center; gap:12px; cursor:pointer; font-weight:750; color:var(--text); margin:0;">
+        <input type="checkbox" name="autoRent" value="1" style="width:22px; height:22px; accent-color:#38bdf8; cursor:pointer;" checked>
+        <span style="font-size:14.5px;">🏢 Blindar Aluguel do Carro: Guardar diária de ${money(rentDaily)}</span>
+      </label>
+      <small style="color:var(--muted); display:block; margin-top:5px; margin-left:34px; font-size:12px; line-height:1.45;">
+        Destina a diária de ${money(rentDaily)} diretamente para o Cofre do Aluguel, garantindo que o valor da locadora esteja protegido antes do dia da cobrança.
+      </small>
+    </div>
+  ` : `
     <div class="full" style="background:linear-gradient(135deg,rgba(52,214,172,0.1),rgba(15,35,55,0.7)); border:1.5px solid rgba(52,214,172,0.35); border-radius:14px; padding:14px 16px; margin:6px 0;">
       <label style="display:flex; align-items:center; gap:12px; cursor:pointer; font-weight:750; color:var(--text); margin:0;">
         <input type="checkbox" name="autoIpva" value="1" style="width:22px; height:22px; accent-color:var(--green); cursor:pointer;" checked>
@@ -931,7 +1207,7 @@ if(type==='daily'){
       </small>
     </div>
   `;
-  fields=date+input('count','Quantidade de corridas',e.count??'','number','required min="0" step="1" max="10000" inputmode="numeric"')+['Uber','99','inDrive','Particular','Outros'].map((app,i)=>input('app'+i,app+' (R$)',e.breakdown?.[app]??(app==='Outros'&&e.mode==='daily'&&!e.breakdown?e.amount:0),'number','required min="0" step="0.01" max="10000000" inputmode="decimal"')).join('')+input('km','KM totais do trabalho',e.km??'','number','required min="0" step="0.1" max="100000" inputmode="decimal"')+input('hours','Horas totais (ex: 8.5 para 8h30)',e.hours??'','number','required min="0" step="0.1" max="24" inputmode="decimal"')+autoIpvaField+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Inclua espera e km sem passageiro. Lance despesas separadamente em Despesas. O valor recebido deve ser o repasse ao motorista, sem descontar a taxa do aplicativo novamente.</p>';
+  fields=date+input('count','Quantidade de corridas',e.count??'','number','required min="0" step="1" max="10000" inputmode="numeric"')+['Uber','99','inDrive','Particular','Outros'].map((app,i)=>input('app'+i,app+' (R$)',e.breakdown?.[app]??(app==='Outros'&&e.mode==='daily'&&!e.breakdown?e.amount:0),'number','required min="0" step="0.01" max="10000000" inputmode="decimal"')).join('')+input('km','KM totais do trabalho',e.km??'','number','required min="0" step="0.1" max="100000" inputmode="decimal"')+input('hours','Horas totais (ex: 8.5 para 8h30)',e.hours??'','number','required min="0" step="0.1" max="24" inputmode="decimal"')+autoBlindarField+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Inclua espera e km sem passageiro. Lance despesas separadamente em Despesas. O valor recebido deve ser o repasse ao motorista, sem descontar a taxa do aplicativo novamente.</p>';
 }
 if(type==='expense'){
   title=id?'Editar despesa':'Registrar despesa';
@@ -1012,13 +1288,67 @@ if(type==='vehicle'){
 }
 if(type==='goals'){title='Editar metas';fields=input('daily','Saldo diário desejado (R$)',s.goals.daily,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"')+input('monthly','Saldo mensal desejado (R$)',s.goals.monthly,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"')+input('reserve','Objetivo de reserva (R$)',s.goals.reserve,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"');}
 if(type==='profile'){title='Seu nome';fields=input('name','Como você prefere ser chamado?',s.profile.name,'text','required maxlength="60"');}
+if(type==='vistoria'){
+  title='🛡️ Dossiê de Vistoria de Retirada';
+  const vData = JSON.parse(localStorage.getItem('cap_rent_vistoria') || '{}');
+  const checked = it => (vData.itens || []).includes(it) ? 'checked' : '';
+  const itensList = [
+    'Estepe calibrado', 'Macaco e chave de roda', 'Triângulo de sinalização',
+    'Ar-condicionado gelando', 'Vidros e travas elétricas funcionando', 'Pára-brisa sem trincas',
+    'Faróis e lanternas funcionando', '4 Pneus em bom estado', 'Bancos e estofamento sem rasgos'
+  ];
+  const checksHtml = `
+    <div class="full" style="background:rgba(255,255,255,0.02);border:1px solid var(--line);border-radius:12px;padding:12px 14px;">
+      <label style="font-weight:750;margin-bottom:8px;display:block;">Checklist de Equipamentos & Integridade:</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
+        ${itensList.map(it => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:0;">
+            <input type="checkbox" name="vistoriaItens" value="${esc(it)}" ${checked(it)} style="width:18px;height:18px;accent-color:var(--green);">
+            <span>${esc(it)}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  fields = 
+    input('vistoriaLocadora','Locadora / Frota',vData.locadora||'Localiza','text','required placeholder="Ex: Localiza, Kovi, Unidas, Movida"') +
+    input('vistoriaData','Data da Retirada',vData.dataRetirada||dateKey(),'date','required') +
+    input('vistoriaKm','KM na Retirada (Hodômetro)',vData.kmRetirada||s.profile.odometer||'','number','required min="0" step="1"') +
+    select('vistoriaTanque','Nível do Tanque na Saída',['Cheio (8/8)','3/4 (6/8)','1/2 (4/8)','1/4 (2/8)','Reserva'],vData.tanque||'Cheio (8/8)') +
+    checksHtml +
+    `<label class="full">Avarias, riscos e amassados pré-existentes (Descreva com detalhes)
+      <textarea name="vistoriaAvarias" rows="3" style="width:100%;padding:10px 14px;border-radius:10px;background:var(--input-bg);color:var(--text);border:1px solid var(--line);" placeholder="Ex: Risco no paralamas dianteiro esquerdo, calota da roda traseira direita ralada, pequeno desgaste no banco...">${esc(vData.avarias||'')}</textarea>
+    </label>` +
+    `<p class="notice full" style="font-size:12px;">📸 Lembre-se: Tire fotos e vídeos de todos os 4 ângulos, hodômetro e teto antes de sair do pátio da locadora e guarde no seu Google Fotos/WhatsApp com data carimbada.</p>`;
+}
 $('#modalTitle').textContent=title;$('#fields').innerHTML=`<div class="form-grid">${fields}</div>`;$('#formError').textContent='';$('#modal').showModal();}
-async function saveForm(ev){ev.preventDefault();if(saving)return;const f=Object.fromEntries(new FormData(ev.target)),{type,id}=formContext,s=state(),n=k=>Number(f[k]);let e;if(['income','daily','expense','fund'].includes(type)&&(!validDate(f.date)||f.date>dateKey()))return formError('Informe uma data válida, até hoje.');
+async function saveForm(ev){ev.preventDefault();if(saving)return;const f=Object.fromEntries(new FormData(ev.target)),{type,id}=formContext,s=state(),n=k=>Number(f[k]);
+if(type==='vistoria'){
+  const formEl=ev.target;
+  const itensChecked=Array.from(formEl.querySelectorAll('input[name="vistoriaItens"]:checked')).map(cb=>cb.value);
+  const vistoriaObj={
+    locadora:f.vistoriaLocadora?.trim()||'',
+    dataRetirada:f.vistoriaData||'',
+    kmRetirada:Number(f.vistoriaKm)||0,
+    tanque:f.vistoriaTanque||'Cheio (8/8)',
+    itens:itensChecked,
+    avarias:f.vistoriaAvarias?.trim()||''
+  };
+  localStorage.setItem('cap_rent_vistoria',JSON.stringify(vistoriaObj));
+  dirty=false;
+  $('#modal').close();
+  toast('🛡️ Dossiê de Vistoria de Retirada gravado com sucesso!');
+  render();
+  return;
+}
+let e;if(['income','daily','expense','fund'].includes(type)&&(!validDate(f.date)||f.date>dateKey()))return formError('Informe uma data válida, até hoje.');
 let ipvaAutoAmount=0;
-if(type==='income'||type==='daily'){const conflicts=s.entries.filter(e=>e.id!==id&&e.type==='income'&&e.date===f.date);if(conflicts.some(e=>e.mode==='daily')||(type==='daily'&&conflicts.length))return formError('Já existem ganhos neste dia. Edite o fechamento existente ou remova as corridas antes de criar um fechamento.');let breakdown;let amount=n('amount');if(type==='daily'){breakdown={};['Uber','99','inDrive','Particular','Outros'].forEach((app,i)=>breakdown[app]=n('app'+i));amount=round(Object.values(breakdown).reduce((a,b)=>a+b,0));if(f.autoIpva&&amount>0)ipvaAutoAmount=round(amount*0.10);}if(!finite(amount,.01))return formError('Informe pelo menos um ganho maior que zero.');const hours=type==='daily'?n('hours'):n('minutes')/60;if(hours+conflicts.reduce((sum,e)=>sum+e.hours,0)>24)return formError('O tempo total registrado neste dia não pode ultrapassar 24 horas.');e={id:id||uid(),type:'income',mode:type==='daily'?'daily':'ride',date:f.date,app:type==='daily'?'Todos':f.app,amount:round(amount),km:n('km'),hours,count:type==='daily'?n('count'):1,description:f.description.trim(),...(breakdown?{breakdown}:{})};}
+let rentAutoAmount=0;
+if(type==='income'||type==='daily'){const conflicts=s.entries.filter(e=>e.id!==id&&e.type==='income'&&e.date===f.date);if(conflicts.some(e=>e.mode==='daily')||(type==='daily'&&conflicts.length))return formError('Já existem ganhos neste dia. Edite o fechamento existente ou remova as corridas antes de criar um fechamento.');let breakdown;let amount=n('amount');if(type==='daily'){breakdown={};['Uber','99','inDrive','Particular','Outros'].forEach((app,i)=>breakdown[app]=n('app'+i));amount=round(Object.values(breakdown).reduce((a,b)=>a+b,0));if(f.autoIpva&&amount>0)ipvaAutoAmount=round(amount*0.10);if(f.autoRent&&amount>0){const rw=Number(s.profile.rentWeekly)||650, rwd=Number(s.profile.rentWorkDays)||6;rentAutoAmount=round(rw/Math.max(1,rwd));}}if(!finite(amount,.01))return formError('Informe pelo menos um ganho maior que zero.');const hours=type==='daily'?n('hours'):n('minutes')/60;if(hours+conflicts.reduce((sum,e)=>sum+e.hours,0)>24)return formError('O tempo total registrado neste dia não pode ultrapassar 24 horas.');e={id:id||uid(),type:'income',mode:type==='daily'?'daily':'ride',date:f.date,app:type==='daily'?'Todos':f.app,amount:round(amount),km:n('km'),hours,count:type==='daily'?n('count'):1,description:f.description.trim(),...(breakdown?{breakdown}:{})};}
 if(type==='expense')e={id:id||uid(),type:'expense',date:f.date,amount:round(n('amount')),category:f.category,description:f.description.trim()};
 const next=JSON.parse(JSON.stringify(s));if(e){const i=next.entries.findIndex(x=>x.id===id);if(i<0)next.entries.push(e);else next.entries[i]=e;}
 if(type==='daily'&&ipvaAutoAmount>=1){const fIdx=next.funds.findIndex(x=>x.date===f.date&&(x.name==='IPVA e Seguro'||x.name==='🛡️ IPVA & Seguro'));if(fIdx>=0)next.funds[fIdx].amount=ipvaAutoAmount;else next.funds.push({id:uid(),date:f.date,name:'IPVA e Seguro',amount:ipvaAutoAmount});}
+if(type==='daily'&&rentAutoAmount>=1){const fIdx=next.funds.findIndex(x=>x.date===f.date&&(x.name==='Aluguel do Carro'||x.name.toLowerCase().includes('aluguel')));if(fIdx>=0)next.funds[fIdx].amount=rentAutoAmount;else next.funds.push({id:uid(),date:f.date,name:'Aluguel do Carro',amount:rentAutoAmount});}
 if(type==='fund'){const fund={id:id||uid(),date:f.date,name:f.name.trim(),amount:round(n('amount'))};if(!fund.name)return formError('Informe o objetivo do aporte.');const i=next.funds.findIndex(x=>x.id===id);if(i<0)next.funds.push(fund);else next.funds[i]=fund;}
 if(type==='vehicle'){
   const odo = n('odometer');
@@ -1044,7 +1374,7 @@ if(type==='vehicle'){
 if(type==='goals')next.goals={daily:n('daily'),monthly:n('monthly'),reserve:n('reserve')};
 if(type==='profile'){if(!f.name.trim())return formError('Informe seu nome.');next.profile.name=f.name.trim();}
 if(!validBackup(next))return formError('Confira os valores informados. Não foi possível salvar.');
-const successMsg = (type==='daily'&&ipvaAutoAmount>0)?`Fechamento salvo! 🛡️ ${money(ipvaAutoAmount)} guardados no IPVA & Seguro!`:(type === 'income' ? 'Ganho salvo com sucesso!' : type === 'expense' ? 'Despesa salva com sucesso!' : 'Registro salvo com sucesso!');
+const successMsg = (type==='daily'&&rentAutoAmount>0)?`Fechamento salvo! 🏢 ${money(rentAutoAmount)} blindados no Cofre do Aluguel!`:(type==='daily'&&ipvaAutoAmount>0)?`Fechamento salvo! 🛡️ ${money(ipvaAutoAmount)} guardados no IPVA & Seguro!`:(type === 'income' ? 'Ganho salvo com sucesso!' : type === 'expense' ? 'Despesa salva com sucesso!' : 'Registro salvo com sucesso!');
 if(await commit(next,demo?'Salvo na demonstração.':successMsg)){dirty=false;$('#modal').close();}
 }
 function formError(msg){$('#formError').textContent=msg;}
@@ -1668,6 +1998,126 @@ window.gerarComprovanteRendaPDF = function() {
           <strong style="font-family:monospace;">${hashDoc}</strong>
         </div>
       </div>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
+
+window.guardarDiariaAluguel = async () => {
+  const s = state();
+  const rw = Number(s.profile.rentWeekly) || 650;
+  const rwd = Number(s.profile.rentWorkDays) || 6;
+  const daily = round(rw / Math.max(1, rwd));
+  const today = dateKey();
+
+  const val = prompt(`Quanto deseja guardar no Cofre do Aluguel hoje?`, daily.toFixed(2));
+  if (val === null) return;
+  const amt = parseFloat(val.replace(',', '.'));
+  if (!amt || amt <= 0) return alert('Informe um valor válido.');
+
+  const next = JSON.parse(JSON.stringify(s));
+  next.funds.push({
+    id: uid(),
+    date: today,
+    name: 'Aluguel do Carro',
+    amount: round(amt)
+  });
+
+  if (await commit(next, `🏢 ${money(amt)} guardados no Cofre do Aluguel com sucesso!`)){
+    render();
+  }
+};
+
+window.abrirVistoriaModal = () => {
+  openForm('vistoria');
+};
+
+window.imprimirVistoria = () => {
+  const v = JSON.parse(localStorage.getItem('cap_rent_vistoria') || '{}');
+  const p = state().profile;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return alert('Por favor, permita pop-ups para gerar a impressão do dossiê.');
+
+  const itensList = (v.itens && v.itens.length)
+    ? v.itens.map(it => `<li style="padding:4px 0;">✓ <strong>${it}</strong></li>`).join('')
+    : '<li>Nenhum item marcado especificamente</li>';
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Dossiê de Vistoria de Retirada - ${p.vehicle || 'Veículo'}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; padding: 30px; line-height: 1.5; }
+        .header { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px; }
+        .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .sub { color: #555; font-size: 13px; text-transform: uppercase; margin-top: 4px; }
+        .box { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .avarias { background: #fff8f0; border-left: 4px solid #f97316; padding: 12px; font-size: 14px; white-space: pre-wrap; }
+        .footer { margin-top: 40px; border-top: 1px dashed #aaa; padding-top: 16px; font-size: 12px; color: #555; }
+        .sign { margin-top: 50px; display: flex; justify-content: space-between; }
+        .sign-line { border-top: 1px solid #000; width: 42%; text-align: center; padding-top: 6px; font-size: 13px; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="logo">CAPITALEX DRIVER • DOSSIÊ DE VISTORIA DO VEÍCULO</div>
+        <div class="sub">Comprovante de Proteção Contra Cobranças Indevidas de Avarias na Locadora</div>
+      </div>
+
+      <div class="box">
+        <h3 style="margin-top:0;">Dados da Retirada na Locadora</h3>
+        <div class="grid">
+          <div><strong>Locadora / Frota:</strong> ${v.locadora || 'Não informada'}</div>
+          <div><strong>Data da Retirada:</strong> ${v.dataRetirada || 'Não informada'}</div>
+          <div><strong>Modelo do Veículo:</strong> ${p.vehicle || 'Não informado'}</div>
+          <div><strong>KM no Hodômetro:</strong> ${v.kmRetirada || p.odometer || 0} km</div>
+          <div><strong>Nível do Tanque:</strong> ${v.tanque || 'Cheio (8/8)'}</div>
+          <div><strong>Condutor Responsável:</strong> ${p.name || 'Motorista'}</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h3 style="margin-top:0;">Checklist de Equipamentos & Integridade</h3>
+        <ul style="margin:0;padding-left:20px;">
+          ${itensList}
+        </ul>
+      </div>
+
+      <div class="box">
+        <h3 style="margin-top:0;">Registro de Avarias Pré-Existentes (Riscos, Amassados, Calotas)</h3>
+        <div class="avarias">
+          ${v.avarias || 'Nenhuma avaria prévia anotada no momento da retirada.'}
+        </div>
+        <p style="font-size:12px;color:#666;margin-top:10px;">
+          * As fotos e vídeos datados do momento da retirada foram arquivados eletronicamente pelo condutor para fins probatórios em eventuais disputas ou cobranças de coparticipação.
+        </p>
+      </div>
+
+      <div class="sign">
+        <div class="sign-line">
+          <strong>${p.name || 'Assinatura do Motorista'}</strong><br>
+          Condutor Responsável
+        </div>
+        <div class="sign-line">
+          <strong>Vistoriador / Locadora</strong><br>
+          Entrega do Veículo
+        </div>
+      </div>
+
+      <div class="footer">
+        Gerado pelo Capitalex Driver em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}. Documento utilitário de controle operacional independente.
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        }
+      </script>
     </body>
     </html>
   `);
