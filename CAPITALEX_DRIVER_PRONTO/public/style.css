@@ -1103,3 +1103,19 @@ button:active {
   background: #f8fafc !important;
   border-color: #e2e8f0 !important;
 }
+
+/* Ocultar Badge e Drawer Automáticos do Netlify */
+[data-netlify-badge],
+.netlify-badge,
+#netlify-badge,
+iframe[src*="netlify"],
+iframe[title*="Netlify"],
+netlify-drawer-container,
+div[class*="netlify-drawer"],
+div[id*="netlify-drawer"],
+a[href*="netlify.com"][style*="fixed"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
