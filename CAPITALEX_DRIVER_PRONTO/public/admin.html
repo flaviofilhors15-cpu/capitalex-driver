@@ -583,15 +583,9 @@
     async function carregarVendasNuvem() {
       try {
         const res = await api('admin-sales');
-        if (res && Array.isArray(res.sales) && res.sales.length > 0) {
+        if (res && Array.isArray(res.sales)) {
           localStorage.setItem('admin_sales', JSON.stringify(res.sales));
           localStorage.setItem('admin_sales_initialized', 'true');
-        } else {
-          // Se a nuvem estiver vazia mas houver vendas locais, envia para a nuvem
-          const local = getSales();
-          if (local.length > 0) {
-            await salvarVendasNuvem(local);
-          }
         }
       } catch (err) {
         console.warn('Erro ao carregar vendas da nuvem:', err);
@@ -1100,35 +1094,6 @@
       try {
         let sales = getSales();
         const hiddenUsers = getHiddenUsers();
-        
-        // Se ainda não há vendas registradas, calcula com base nos assinantes ativos atuais (apenas na 1ª vez)
-        if (sales.length === 0 && todosUsuarios.length > 0 && !localStorage.getItem('admin_sales_initialized')) {
-          localStorage.setItem('admin_sales_initialized', 'true');
-          const ativos = todosUsuarios.filter(u => u.is_active && !isUserHidden(u));
-          if (ativos.length > 0) {
-            sales = ativos.map(u => {
-              const planDays = u.days_left > 40 ? 90 : 30;
-              let saleDate = new Date();
-              if (u.expires_at) {
-                const expDate = new Date(u.expires_at);
-                saleDate = new Date(expDate.getTime() - planDays * 86400000);
-                if (saleDate > new Date()) saleDate = new Date();
-              }
-              return {
-                id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-                date: saleDate.toISOString(),
-                value: planDays === 90 ? 69.90 : 25.95,
-                plan: planDays,
-                email: (u.email || '').toLowerCase(),
-                type: 'venda',
-                category: 'nova',
-                note: planDays === 90 ? 'Trimestral (90d)' : 'Mensal (30d)'
-              };
-            });
-            localStorage.setItem('admin_sales', JSON.stringify(sales));
-            salvarVendasNuvem(sales);
-          }
-        }
 
         // Filtro de contas ocultas: deduz valores do gráfico se o motorista estiver oculto
         const visibleSales = sales.filter(s => {
