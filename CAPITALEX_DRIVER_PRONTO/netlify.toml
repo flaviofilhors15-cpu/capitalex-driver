@@ -2,7 +2,38 @@
   command = "npm run build"
   publish = "public"
   functions = "netlify/functions"
+
 [build.environment]
   NODE_VERSION = "22"
+
 [functions]
   node_bundler = "esbuild"
+
+# Redirecionamento da API Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Atalhos diretos
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+
+[[redirects]]
+  from = "/termos"
+  to = "/termos.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacidade"
+  to = "/privacidade.html"
+  status = 200
+
+# Fallback SPA para evitar telas de 404
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

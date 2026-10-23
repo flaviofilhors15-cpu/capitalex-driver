@@ -149,7 +149,8 @@ export async function user(req, e) {
 
 export async function account(e, id, email = '', referredBy = null) {
   const now = new Date();
-  const trialEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
+  const trialDays = referredBy ? 10 : 7;
+  const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString();
   await db(e, 'driver_accounts?on_conflict=user_id', 'POST', {
     user_id: id,
     subscription_status: 'trial',

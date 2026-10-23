@@ -245,10 +245,191 @@ function waterfallChart(entries=selected()){
   });
   return `<div style="height:280px;width:100%;position:relative;margin-top:10px;"><canvas id="${id}"></canvas></div><p class="notice" style="margin-top:16px;text-align:center;">O gráfico mostra como cada despesa reduz o Ganho Bruto até sobrar o Lucro Líquido final.</p>`;
 }
-function vehicle(){const p=state().profile,left=p.serviceAt-p.odometer;
-const ipvaStr = p.ipva ? (new Date(p.ipva) < new Date() ? 'Vencido' : displayDate(p.ipva)) : 'Não definido';
-const segStr = p.seguro ? (new Date(p.seguro) < new Date() ? 'Vencido' : displayDate(p.seguro)) : 'Não definido';
-return `<div class="cards">${card('Veículo',esc(p.vehicle)||'Não informado','Cadastre seu modelo')}${card('Hodômetro',number(p.odometer)+' km','Atualização manual')}${card('Próxima revisão',p.serviceAt?(left<=0?'Revisão pendente':number(left)+' km'):'Não definida',p.serviceAt?'Alvo: '+number(p.serviceAt)+' km':'Defina o alvo',true)}${card('Vencimento IPVA',ipvaStr,'Imposto anual')}${card('Vencimento Seguro',segStr,'Proteção do veículo')}</div><section class="panel"><h2>Planejamento do veículo</h2><p class="muted">Atualize a quilometragem e as datas de vencimento dos documentos.</p><div class="actions"><button data-action="vehicle" class="primary">Editar veículo</button><button data-action="expense">Registrar manutenção</button><a href="#calculadora" class="ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:#34d6ac;border-color:#24534f;font-weight:700;">⛽ Comparador na Bomba</a></div><p class="notice">Reserva atual: ${money(state().reservePerKm)}/km. A provisão é apenas planejamento. IPVA e Manutenções devem ser registrados em Despesas quando pagos.</p><h3>Manutenções registradas no período</h3>${table(selected().filter(e=>e.type==='expense'&&e.category==='Manutenção'))}</section>`;}
+function vehicle(){
+  const p=state().profile, left=p.serviceAt-p.odometer;
+  const isRent = p.vehicleType === 'rent';
+
+  // Dados de Carro Alugado
+  const rentWeekly = Number(p.rentWeekly) || 650;
+  const rentWorkDays = Number(p.rentWorkDays) || 6;
+  const rentDaily = round(rentWeekly / Math.max(1, rentWorkDays));
+  const rentDay = p.rentDay || 'Sexta';
+  const rentKmLimit = Number(p.rentKmLimit) || 1250;
+
+  // Cálculo de KM rodados na semana atual (segunda-feira até hoje)
+  const dNow = new Date();
+  const dMon = new Date(dNow);
+  dMon.setDate(dMon.getDate() - ((dMon.getDay() + 6) % 7));
+  const monKey = dateKey(dMon);
+  const weekIncomes = state().entries.filter(e => e.type === 'income' && e.date >= monKey && e.date <= dateKey());
+  const weekKm = round(weekIncomes.reduce((s, e) => s + (Number(e.km) || 0), 0));
+  const kmLimitLeft = rentKmLimit > 0 ? (rentKmLimit - weekKm) : 0;
+  const kmPct = rentKmLimit > 0 ? Math.min(100, Math.round((weekKm / rentKmLimit) * 100)) : 0;
+
+  // Dados de Carro Próprio & Manutenções Preventivas
+  const ipvaStr = p.ipva ? (new Date(p.ipva) < new Date() ? 'Vencido' : displayDate(p.ipva)) : 'Não definido';
+  const segStr = p.seguro ? (new Date(p.seguro) < new Date() ? 'Vencido' : displayDate(p.seguro)) : 'Não definido';
+
+  const oilTarget = Number(p.oilChangeKm) || (p.odometer ? p.odometer + 10000 : 10000);
+  const oilLeft = oilTarget - p.odometer;
+  const oilPct = Math.max(0, Math.min(100, Math.round((1 - (Math.max(0, oilLeft) / 10000)) * 100)));
+
+  const brakesTarget = Number(p.brakesKm) || (p.odometer ? p.odometer + 30000 : 30000);
+  const brakesLeft = brakesTarget - p.odometer;
+  const brakesPct = Math.max(0, Math.min(100, Math.round((1 - (Math.max(0, brakesLeft) / 30000)) * 100)));
+
+  const tiresTarget = Number(p.tiresKm) || (p.odometer ? p.odometer + 10000 : 10000);
+  const tiresLeft = tiresTarget - p.odometer;
+  const tiresPct = Math.max(0, Math.min(100, Math.round((1 - (Math.max(0, tiresLeft) / 10000)) * 100)));
+
+  const heroRentHtml = isRent ? `
+    <section class="panel" style="background:linear-gradient(135deg,rgba(67,166,255,0.08) 0%,rgba(10,23,38,0.95) 100%);border:1.5px solid rgba(67,166,255,0.4);border-radius:20px;padding:22px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <div>
+          <span class="tag" style="background:rgba(67,166,255,0.2);color:#38bdf8;font-weight:800;font-size:11px;letter-spacing:1px;margin-bottom:6px;display:inline-block;">VEÍCULO ALUGADO • LOCADORA</span>
+          <h2 style="font-size:22px;margin:2px 0;color:var(--text);font-weight:800;">Controle do Aluguel & Franquia</h2>
+          <p class="muted" style="margin:4px 0 0;font-size:13.5px;">Custo fixo semanal e monitoramento do limite de km para não pagar multa.</p>
+        </div>
+        <button class="primary" data-action="vehicle" style="white-space:nowrap;">⚙️ Ajustar Valores</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.03);padding:14px;border-radius:14px;border:1px solid var(--line);">
+          <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Aluguel Semanal</small>
+          <strong style="font-size:22px;color:#38bdf8;font-family:'JetBrains Mono',monospace;">${money(rentWeekly)}</strong>
+          <small style="color:var(--muted);display:block;margin-top:2px;">Cobrado toda ${rentDay}</small>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:14px;border-radius:14px;border:1px solid var(--line);">
+          <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">Custo por Dia de Trabalho</small>
+          <strong style="font-size:22px;color:var(--green);font-family:'JetBrains Mono',monospace;">${money(rentDaily)}</strong>
+          <small style="color:var(--muted);display:block;margin-top:2px;">Baseado em ${rentWorkDays} dias/sem</small>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:14px;border-radius:14px;border:1px solid var(--line);">
+          <small style="color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;display:block;">KM Rodados na Semana</small>
+          <strong style="font-size:22px;color:${kmLimitLeft<0?'#f87171':'var(--text)'};font-family:'JetBrains Mono',monospace;">${number(weekKm)} km</strong>
+          <small style="color:var(--muted);display:block;margin-top:2px;">Franquia: ${rentKmLimit?number(rentKmLimit)+' km':'Livre'}</small>
+        </div>
+      </div>
+
+      ${rentKmLimit > 0 ? `
+        <div style="background:rgba(8,20,32,0.7);padding:14px 16px;border-radius:14px;border:1px solid #1f3a54;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
+            <span>Consumo da Franquia Semanal: <strong>${kmPct}%</strong></span>
+            <span style="font-weight:700;color:${kmLimitLeft<=0?'#f87171':'#34d6ac'};">
+              ${kmLimitLeft <= 0 ? '⚠️ Franquia semanal estourada!' : `Restam ${number(kmLimitLeft)} km até ${rentDay}`}
+            </span>
+          </div>
+          <progress value="${kmPct}" max="100" style="height:12px;width:100%;border-radius:6px;"></progress>
+        </div>
+      ` : ''}
+    </section>
+  ` : '';
+
+  const maintenanceHtml = !isRent ? `
+    <section class="panel" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div>
+          <h2>🛠️ Manutenções Preventivas por Hodômetro</h2>
+          <p class="muted" style="margin:2px 0 0;font-size:13.5px;">Monitore o desgaste e saiba a hora exata da troca antes de danificar o motor.</p>
+        </div>
+        <button class="primary" data-action="vehicle">⚙️ Configurar Alvos</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+        <!-- Card Óleo -->
+        <div style="background:rgba(8,20,32,0.8);border:1px solid ${oilLeft<=1000?'rgba(255,180,107,0.5)':'#1c3850'};border-radius:16px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="font-size:15px;color:var(--text);display:flex;align-items:center;gap:6px;">🟡 Troca de Óleo & Filtro</strong>
+            <span class="tag" style="background:${oilLeft<=1000?'rgba(255,180,107,0.2)':'rgba(52,214,172,0.15)'};color:${oilLeft<=1000?'var(--orange)':'var(--green)'};font-size:10.5px;">
+              ${oilLeft<=0?'VENCIDA!':oilLeft<=1000?'ATENÇÃO':'EM DIA'}
+            </span>
+          </div>
+          <div style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;margin:6px 0;color:${oilLeft<=1000?'var(--orange)':'var(--green)'};">
+            ${oilLeft<=0?'Trocar Já!':`${number(oilLeft)} km restantes`}
+          </div>
+          <small style="color:var(--muted);display:block;margin-bottom:10px;">Próxima troca aos: <strong>${number(oilTarget)} km</strong></small>
+          <progress value="${oilPct}" max="100" style="height:8px;margin-bottom:12px;"></progress>
+          <button type="button" class="ghost" onclick="window.resetMaintenance('oil')" style="width:100%;font-size:12px;padding:8px;border-color:#2a4d6e;">
+            ✅ Feito! Renovar +10.000 km
+          </button>
+        </div>
+
+        <!-- Card Pastilhas -->
+        <div style="background:rgba(8,20,32,0.8);border:1px solid ${brakesLeft<=3000?'rgba(255,180,107,0.5)':'#1c3850'};border-radius:16px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="font-size:15px;color:var(--text);display:flex;align-items:center;gap:6px;">🛑 Pastilhas de Freio</strong>
+            <span class="tag" style="background:${brakesLeft<=3000?'rgba(255,180,107,0.2)':'rgba(52,214,172,0.15)'};color:${brakesLeft<=3000?'var(--orange)':'var(--green)'};font-size:10.5px;">
+              ${brakesLeft<=0?'VENCIDA!':brakesLeft<=3000?'ATENÇÃO':'EM DIA'}
+            </span>
+          </div>
+          <div style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;margin:6px 0;color:${brakesLeft<=3000?'var(--orange)':'var(--green)'};">
+            ${brakesLeft<=0?'Revisar Freio!':`${number(brakesLeft)} km restantes`}
+          </div>
+          <small style="color:var(--muted);display:block;margin-bottom:10px;">Próxima revisão aos: <strong>${number(brakesTarget)} km</strong></small>
+          <progress value="${brakesPct}" max="100" style="height:8px;margin-bottom:12px;"></progress>
+          <button type="button" class="ghost" onclick="window.resetMaintenance('brakes')" style="width:100%;font-size:12px;padding:8px;border-color:#2a4d6e;">
+            ✅ Feito! Renovar +30.000 km
+          </button>
+        </div>
+
+        <!-- Card Pneus -->
+        <div style="background:rgba(8,20,32,0.8);border:1px solid ${tiresLeft<=1500?'rgba(255,180,107,0.5)':'#1c3850'};border-radius:16px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="font-size:15px;color:var(--text);display:flex;align-items:center;gap:6px;">🛞 Rodízio de Pneus</strong>
+            <span class="tag" style="background:${tiresLeft<=1500?'rgba(255,180,107,0.2)':'rgba(52,214,172,0.15)'};color:${tiresLeft<=1500?'var(--orange)':'var(--green)'};font-size:10.5px;">
+              ${tiresLeft<=0?'FAZER RODÍZIO':tiresLeft<=1500?'ATENÇÃO':'EM DIA'}
+            </span>
+          </div>
+          <div style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;margin:6px 0;color:${tiresLeft<=1500?'var(--orange)':'var(--green)'};">
+            ${tiresLeft<=0?'Rodízio Pendente':`${number(tiresLeft)} km restantes`}
+          </div>
+          <small style="color:var(--muted);display:block;margin-bottom:10px;">Próximo rodízio aos: <strong>${number(tiresTarget)} km</strong></small>
+          <progress value="${tiresPct}" max="100" style="height:8px;margin-bottom:12px;"></progress>
+          <button type="button" class="ghost" onclick="window.resetMaintenance('tires')" style="width:100%;font-size:12px;padding:8px;border-color:#2a4d6e;">
+            ✅ Feito! Renovar +10.000 km
+          </button>
+        </div>
+      </div>
+    </section>
+  ` : '';
+
+  const summaryCards = isRent 
+    ? `<div class="cards">
+        ${card('Veículo',esc(p.vehicle)||'Não informado','Locadora')}
+        ${card('Hodômetro',number(p.odometer)+' km','Atualização manual')}
+        ${card('Diária do Aluguel',money(rentDaily),`${rentWorkDays} dias/semana`,true)}
+        ${card('Vencimento Cobrança',`Toda ${rentDay}`,'Débito do aluguel')}
+       </div>`
+    : `<div class="cards">
+        ${card('Veículo',esc(p.vehicle)||'Não informado','Carro Próprio')}
+        ${card('Hodômetro',number(p.odometer)+' km','Atualização manual')}
+        ${card('Próxima revisão',p.serviceAt?(left<=0?'Revisão pendente':number(left)+' km'):'Não definida',p.serviceAt?'Alvo: '+number(p.serviceAt)+' km':'Defina o alvo',true)}
+        ${card('Vencimento IPVA',ipvaStr,'Imposto anual')}
+        ${card('Vencimento Seguro',segStr,'Proteção do veículo')}
+       </div>`;
+
+  return `
+    ${summaryCards}
+    ${heroRentHtml}
+    ${maintenanceHtml}
+    <section class="panel">
+      <h2>Planejamento do veículo</h2>
+      <p class="muted">Atualize a quilometragem e mantenha seus registros preventivos em dia.</p>
+      <div class="actions">
+        <button data-action="vehicle" class="primary">Editar veículo</button>
+        <button data-action="expense">Registrar manutenção</button>
+        <a href="#calculadora" class="ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:#34d6ac;border-color:#24534f;font-weight:700;">⛽ Comparador na Bomba</a>
+      </div>
+      <p class="notice">
+        ${isRent 
+          ? `Veículo alugado: custo fixo de ${money(rentDaily)}/dia de trabalho. Mantenha os lançamentos de combustível e refeição para saber seu lucro real no bolso.`
+          : `Reserva atual: ${money(state().reservePerKm)}/km. A provisão mecânica é um planejamento para evitar surpresas na oficina.`}
+      </p>
+      <h3>Manutenções registradas no período</h3>
+      ${table(selected().filter(e=>e.type==='expense'&&e.category==='Manutenção'))}
+    </section>
+  `;
+}
 function funds(){
   const s=state();
   const allFunds = s.funds || [];
@@ -366,7 +547,7 @@ function reports(){
   const weekAvg = Object.keys(byDay).map(wd => ({ day: wd, avg: byDay[wd] / byDayCount[wd] })).sort((a,b) => b.avg - a.avg);
   const weekHtml = weekAvg.length ? weekAvg.map((w,i) => `<div class="list-row"><span>${i===0?'🏆':i===1?'🥈':i===2?'🥉':(i+1)+'º'} ${w.day}</span><strong>${money(w.avg)} <small>/dia</small></strong></div>`).join('') : empty('Sem dados','Trabalhe em diferentes dias da semana.');
 
-  return `${cards(t)}<section class="panel" style="margin-bottom:22px"><h2>Evolução do período</h2><p class="muted">Agrupamento automático por dia, mês ou ano • valores em R$</p>${chart(true)}</section><section class="panel" style="margin-bottom:22px"><h2>Fluxo do Dinheiro (Cascata)</h2><p class="muted">Veja exatamente como suas despesas reduzem o seu ganho.</p>${waterfallChart()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Resultado detalhado</h2><div class="actions"><button data-action="csv">Exportar CSV</button><button data-action="print">Imprimir / PDF</button></div></div>${[['Ganhos recebidos',money(t.income)],['Despesas pagas',money(t.expense)],['Saldo do período',money(t.net)],['Margem sobre os ganhos',t.income?number(t.net/t.income*100)+'%':'—'],['Ganho por km registrado',t.km?money(t.income/t.km):'—'],['Despesa por km registrado',t.km?money(t.expense/t.km):'—'],['Saldo por hora registrada',t.hours?money(t.net/t.hours):'—']].map(([k,v])=>`<div class="list-row"><span>${k}</span><strong>${v}</strong></div>`).join('')}<p class="notice">Indicadores dependem dos dados informados. No fechamento, inclua espera e deslocamentos sem passageiro. Custos fixos e impostos só entram se registrados como despesas.</p></section><div><section class="panel" style="margin-bottom:20px"><h2>Ganhos por aplicativo</h2>${Object.keys(by).length?Object.entries(by).map(([k,v])=>`<div class="list-row"><span>${esc(k)}</span><strong>${money(v)}</strong></div>`).join(''):empty('Sem ganhos no período','Registre seus primeiros resultados.')}</section><section class="panel"><h2>Dias mais lucrativos</h2><p class="muted">Média de lucro líquido (ganhos - despesas) por dia da semana.</p>${weekHtml}</section></div></div>`;
+  return `${cards(t)}<section class="panel" style="margin-bottom:22px"><h2>Evolução do período</h2><p class="muted">Agrupamento automático por dia, mês ou ano • valores em R$</p>${chart(true)}</section><section class="panel" style="margin-bottom:22px"><h2>Fluxo do Dinheiro (Cascata)</h2><p class="muted">Veja exatamente como suas despesas reduzem o seu ganho.</p>${waterfallChart()}</section><div class="split"><section class="panel"><div class="panel-head"><h2>Resultado detalhado</h2><div class="actions"><button data-action="csv">Exportar CSV</button><button data-action="print">Imprimir</button><button type="button" class="primary" onclick="window.gerarComprovanteRendaPDF()" style="background: linear-gradient(135deg, #1e3a8a, #0284c7); border: none; font-weight: 750; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">📄 Comprovante de Renda (PDF)</button></div></div>${[['Ganhos recebidos',money(t.income)],['Despesas pagas',money(t.expense)],['Saldo do período',money(t.net)],['Margem sobre os ganhos',t.income?number(t.net/t.income*100)+'%':'—'],['Ganho por km registrado',t.km?money(t.income/t.km):'—'],['Despesa por km registrado',t.km?money(t.expense/t.km):'—'],['Saldo por hora registrada',t.hours?money(t.net/t.hours):'—']].map(([k,v])=>`<div class="list-row"><span>${k}</span><strong>${v}</strong></div>`).join('')}<p class="notice">Indicadores dependem dos dados informados. No fechamento, inclua espera e deslocamentos sem passageiro. Custos fixos e impostos só entram se registrados como despesas.</p></section><div><section class="panel" style="margin-bottom:20px"><h2>Ganhos por aplicativo</h2>${Object.keys(by).length?Object.entries(by).map(([k,v])=>`<div class="list-row"><span>${esc(k)}</span><strong>${money(v)}</strong></div>`).join(''):empty('Sem ganhos no período','Registre seus primeiros resultados.')}</section><section class="panel"><h2>Dias mais lucrativos</h2><p class="muted">Média de lucro líquido (ganhos - despesas) por dia da semana.</p>${weekHtml}</section></div></div>`;
 }
 function goals(){const s=state(),today=dateKey(),day=totals(s.entries.filter(e=>e.date===today)),month=totals(s.entries.filter(e=>e.date.slice(0,7)===today.slice(0,7)&&e.date<=today)),reserve=s.funds.reduce((n,f)=>n+f.amount,0);return `<div class="actions" style="margin-bottom:20px"><button class="primary" data-action="goals">Editar objetivos</button></div><div class="settings-grid"><section class="panel">${goalPanel('Meta diária',day.net,s.goals.daily,'Saldo de hoje, antes de provisões.')}</section><section class="panel">${goalPanel('Meta mensal',month.net,s.goals.monthly,'Saldo do mês atual, antes de provisões.')}</section><section class="panel">${goalPanel('Reserva financeira',reserve,s.goals.reserve,'Total de aportes registrados em Reservas.')}</section></div>`;}
 function profile(){
@@ -375,16 +556,16 @@ function profile(){
   const refData = window.CapitalexSession?.referral || { balance: 0, total_earned: 0, active_referrals: 0, pix_key: '', pix_key_type: 'CPF' };
   const userEmail = window.CapitalexSession?.email || '';
   const refLink = window.location.origin + '/?ref=' + encodeURIComponent(userEmail);
-  const waMsg = encodeURIComponent(`Fala parceiro! Tô usando o Capitalex Driver pra controlar meus ganhos da Uber e 99 e ver meu lucro líquido de verdade. Entra pelo meu link pra conhecer: ${refLink}`);
+  const waMsg = encodeURIComponent(`Fala parceiro! Tô usando o Capitalex Driver pra controlar meus ganhos da Uber e 99 e ver meu lucro líquido de verdade. Entra pelo meu link que você ganha 10 DIAS GRÁTIS de teste: ${refLink}`);
 
   const referralHtml = userEmail ? `
     <section class="panel full" style="border: 1px solid var(--primary); background: linear-gradient(135deg, rgba(52, 214, 172, 0.08), rgba(18, 30, 45, 0.95));">
       <div class="panel-head">
         <div>
-          <h2>🤝 Indique e Ganhe Recorrente</h2>
-          <p class="muted">Receba no Pix toda vez que seu amigo pagar: <strong>R$ 8,00</strong> todo mês ou <strong>R$ 25,00</strong> no trimestral!</p>
+          <h2>🤝 Indique e Ganhe (Ganha-Ganha)</h2>
+          <p class="muted">Seu amigo ganha <strong>10 dias de teste grátis</strong> (em vez de 7) e você ganha no Pix: <strong>R$ 8,00</strong> todo mês ou <strong>R$ 25,00</strong> no trimestral, podendo abater na sua assinatura!</p>
         </div>
-        <span class="tag" style="background: var(--primary); color: #081320; font-weight: 800;">RENDA EXTRA</span>
+        <span class="tag" style="background: var(--primary); color: #081320; font-weight: 800;">GANHA-GANHA</span>
       </div>
       
       <div class="cards" style="margin-bottom: 20px;">
@@ -421,7 +602,7 @@ function profile(){
     </section>
   ` : '';
 
-  return `<div class="settings-grid">${referralHtml}<section class="panel"><h2>${esc(state().profile.name)||'Seu perfil'}</h2><p class="muted">Personalize a sua experiência.</p><div class="actions"><button data-action="profile" class="primary">Editar nome</button><button data-action="theme" class="ghost">🌓 Trocar Tema (Claro/Escuro)</button></div><p class="notice">Seus registros ficam vinculados à sua conta. Encerre a sessão em aparelhos compartilhados. Não cadastre dados de passageiros.</p></section><section class="panel"><h2>🔔 Lembretes e Bênçãos Diárias</h2><p class="muted">Receba mensagens abençoadas e lembretes para fechar seus ganhos (07:00, 12:30, 17:30 e 21:30).</p><div class="actions"><button data-action="enable-reminders" class="primary">${notifGranted?'✅ Lembretes Ativados':'🔔 Ativar Lembretes'}</button><button data-action="test-reminder" class="ghost">📲 Testar Lembrete Agora</button></div><p class="notice">Funciona diretamente no celular ou computador, mesmo com a aba em segundo plano.</p></section><section class="panel"><h2>Backup e recuperação</h2><p class="muted">Faça o download dos seus dados por segurança ou quando for trocar de celular.</p><div class="actions"><button data-action="backup" class="primary" ${storageIssue&&!demo?'disabled':''}>Baixar backup</button><button data-action="import" ${demo?'disabled':''}>Restaurar arquivo</button><button data-action="recovery" ${demo?'disabled':''}>Recuperar versão anterior</button></div><p class="notice">A cada gravação, a versão anterior fica guardada na sua conta. Exporte também uma cópia própria dos registros.</p>${storageIssue?'<button data-action="raw">Exportar dados originais para recuperação</button>':''}</section><section class="panel full"><h2>Lixeira recuperável</h2><p class="muted">Exclusões ficam guardadas na sua conta e também entram no backup. Restaurar não duplica ganhos já existentes.</p>${trash.length?`<div class="table-wrap"><table class="trash-table"><thead><tr><th>Excluído em</th><th>Registro</th><th>Valor</th><th>Ação</th></tr></thead><tbody>${[...trash].reverse().map(t=>`<tr><td>${displayDate(t.deletedAt)}</td><td>${esc(t.item.name||t.item.category||t.item.app)}<br><small>${displayDate(t.item.date)}</small></td><td>${money(t.item.amount)}</td><td><button data-restore="${esc(t.trashId)}">Restaurar</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhum registro excluído','Se você excluir um lançamento, poderá recuperá-lo aqui.')}</section><section class="panel"><h2>Seus dados e a privacidade</h2><p class="muted">Seus lançamentos são enviados ao servidor por conexão segura e ficam separados por conta. O pagamento é realizado diretamente via Pix de forma segura.</p><p class="notice">Os backups JSON contêm dados financeiros sem criptografia. Guarde-os em local protegido. Esta versão não substitui a proteção e a senha do seu aparelho.</p></section><section class="panel"><h2>Demonstração isolada</h2><p class="muted">Explore gráficos com dados fictícios sem misturá-los aos seus lançamentos.</p><button data-action="demo">${demo?'Sair da demonstração':'Explorar demonstração'}</button></section></div>`;
+  return `<div class="settings-grid">${referralHtml}<section class="panel"><h2>${esc(state().profile.name)||'Seu perfil'}</h2><p class="muted">Personalize a sua experiência.</p><div class="actions"><button data-action="profile" class="primary">Editar nome</button><button data-action="theme" class="ghost">🌓 Trocar Tema (Claro/Escuro)</button></div><p class="notice">Seus registros ficam vinculados à sua conta. Encerre a sessão em aparelhos compartilhados. Não cadastre dados de passageiros.</p></section><section class="panel"><h2>🔔 Lembretes e Bênçãos Diárias</h2><p class="muted">Receba mensagens abençoadas e lembretes para fechar seus ganhos (07:00, 12:30, 17:30 e 21:30).</p><div class="actions"><button data-action="enable-reminders" class="primary">${notifGranted?'✅ Lembretes Ativados':'🔔 Ativar Lembretes'}</button><button data-action="test-reminder" class="ghost">📲 Testar Lembrete Agora</button></div><p class="notice">Funciona diretamente no celular ou computador, mesmo com a aba em segundo plano.</p></section><section class="panel"><h2>Backup e recuperação</h2><p class="muted">Faça o download dos seus dados por segurança ou quando for trocar de celular.</p><div class="actions"><button data-action="backup" class="primary" ${storageIssue&&!demo?'disabled':''}>Baixar backup</button><button data-action="import" ${demo?'disabled':''}>Restaurar arquivo</button><button data-action="recovery" ${demo?'disabled':''}>Recuperar versão anterior</button></div><p class="notice">A cada gravação, a versão anterior fica guardada na sua conta. Exporte também uma cópia própria dos registros.</p>${storageIssue?'<button data-action="raw">Exportar dados originais para recuperação</button>':''}</section><section class="panel full"><h2>Lixeira recuperável</h2><p class="muted">Exclusões ficam guardadas na sua conta e também entram no backup. Restaurar não duplica ganhos já existentes.</p>${trash.length?`<div class="table-wrap"><table class="trash-table"><thead><tr><th>Excluído em</th><th>Registro</th><th>Valor</th><th>Ação</th></tr></thead><tbody>${[...trash].reverse().map(t=>`<tr><td>${displayDate(t.deletedAt)}</td><td>${esc(t.item.name||t.item.category||t.item.app)}<br><small>${displayDate(t.item.date)}</small></td><td>${money(t.item.amount)}</td><td><button data-restore="${esc(t.trashId)}">Restaurar</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhum registro excluído','Se você excluir um lançamento, poderá recuperá-lo aqui.')}</section><section class="panel"><h2>Seus dados e a privacidade</h2><p class="muted">Seus lançamentos são enviados ao servidor por conexão segura e ficam separados por conta. O pagamento é realizado diretamente via Pix de forma segura.</p><p class="notice">Os backups JSON contêm dados financeiros sem criptografia. Guarde-os em local protegido. Esta versão não substitui a proteção e a senha do seu aparelho.</p></section><section class="panel"><h2>Demonstração isolada</h2><p class="muted">Explore gráficos com dados fictícios sem misturá-los aos seus lançamentos.</p><button data-action="demo">${demo?'Sair da demonstração':'Explorar demonstração'}</button></section><section class="panel full" style="border:1px dashed var(--line);background:rgba(10,23,37,0.3);text-align:center;padding:16px;"><p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong>Aviso Legal:</strong> Uber, 99 e inDrive são marcas registradas de seus respectivos proprietários. O Capitalex Driver é um utilitário independente de gestão operacional pessoal sem vínculo ou representação com referidas empresas. Os demonstrativos têm caráter gerencial e estimativo com base nos lançamentos informados pelo usuário.</p><div style="font-size:12px;"><a href="termos.html" target="_blank" style="color:var(--green);text-decoration:underline;">Termos de Uso</a> • <a href="privacidade.html" target="_blank" style="color:var(--green);text-decoration:underline;">Política de Privacidade (LGPD)</a></div></section></div>`;
 }
 window.copyRefLink = () => {
   const inp = document.getElementById('referralLinkInput');
@@ -645,9 +826,83 @@ if(type==='daily'){
   `;
   fields=date+input('count','Quantidade de corridas',e.count??'','number','required min="0" step="1" max="10000" inputmode="numeric"')+['Uber','99','inDrive','Particular','Outros'].map((app,i)=>input('app'+i,app+' (R$)',e.breakdown?.[app]??(app==='Outros'&&e.mode==='daily'&&!e.breakdown?e.amount:0),'number','required min="0" step="0.01" max="10000000" inputmode="decimal"')).join('')+input('km','KM totais do trabalho',e.km??'','number','required min="0" step="0.1" max="100000" inputmode="decimal"')+input('hours','Horas totais (ex: 8.5 para 8h30)',e.hours??'','number','required min="0" step="0.1" max="24" inputmode="decimal"')+autoIpvaField+input('description','Observação (opcional)',e.description||'','text','maxlength="160"')+'<p class="notice full">Inclua espera e km sem passageiro. Lance despesas separadamente em Despesas. O valor recebido deve ser o repasse ao motorista, sem descontar a taxa do aplicativo novamente.</p>';
 }
-if(type==='expense'){title=id?'Editar despesa':'Registrar despesa';const quickExpense = `<div class="full" style="display:flex;gap:8px;margin-bottom:6px;margin-top:-6px;overflow-x:auto;padding-bottom:4px;"><button type="button" class="ghost" style="padding:6px 12px;font-size:13px;white-space:nowrap" onclick="document.querySelector('select[name=category]').value='Combustível';document.querySelector('input[name=amount]').value='50.00'">⛽ R$ 50</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px;white-space:nowrap" onclick="document.querySelector('select[name=category]').value='Combustível';document.querySelector('input[name=amount]').value='100.00'">⛽ R$ 100</button><button type="button" class="ghost" style="padding:6px 12px;font-size:13px;white-space:nowrap" onclick="document.querySelector('select[name=category]').value='Alimentação';document.querySelector('input[name=amount]').value='25.00'">🍔 R$ 25</button></div>`;fields=date+select('category','Categoria',categories,e.category)+amount+quickExpense+input('description','Descrição (opcional)',e.description||'','text','maxlength="160"');}
+if(type==='expense'){
+  title=id?'Editar despesa':'Registrar despesa';
+  const quickExpense = `
+    <div class="full" style="background:rgba(255,180,107,0.08);border:1.5px solid rgba(255,180,107,0.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:800;color:var(--orange);letter-spacing:0.8px;text-transform:uppercase;">⚡ Lançamento Ultra-Rápido no Posto</span>
+        <small style="color:var(--muted);font-size:11px;">1 toque preenche tudo</small>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;border-color:rgba(255,180,107,0.45);font-weight:750;" onclick="window.quickFillFuel(50)">⛽ R$ 50</button>
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;border-color:rgba(255,180,107,0.45);font-weight:750;" onclick="window.quickFillFuel(80)">⛽ R$ 80</button>
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;border-color:rgba(255,180,107,0.45);font-weight:750;" onclick="window.quickFillFuel(100)">⛽ R$ 100</button>
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;border-color:rgba(255,180,107,0.45);font-weight:750;" onclick="window.quickFillFuel(150)">⛽ R$ 150</button>
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;border-color:rgba(255,180,107,0.45);font-weight:750;" onclick="window.quickFillFuel(200)">⛽ R$ 200</button>
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;" onclick="window.quickFillFood(25)">🍔 R$ 25</button>
+        <button type="button" class="ghost" style="padding:8px 14px;font-size:13px;white-space:nowrap;" onclick="window.quickFillFood(35)">🍔 R$ 35</button>
+      </div>
+    </div>
+  `;
+  fields=quickExpense+date+select('category','Categoria',categories,e.category||'Combustível')+amount+input('description','Descrição (opcional)',e.description||'Abastecimento','text','maxlength="160"');
+}
 if(type==='fund'){title=id?'Editar aporte':'Registrar aporte';fields=date+'<label>Caixinha / Objetivo<input name="name" list="fundOpts" value="'+esc(e.name||'IPVA e Seguro')+'" required maxlength="100"><datalist id="fundOpts"><option value="IPVA e Seguro"></option><option value="Reserva de emergência"></option><option value="Férias e 13º"></option><option value="Manutenção do Carro"></option></datalist></label>'+amount;}
-if(type==='vehicle'){title='Configurar veículo';fields=input('vehicle','Modelo',s.profile.vehicle,'text','required maxlength="100"')+input('odometer','Hodômetro atual (km)',s.profile.odometer,'number','required min="0" max="10000000" step="1" inputmode="numeric"')+input('serviceAt','Próxima revisão: hodômetro-alvo',s.profile.serviceAt,'number','required min="0" max="10000000" step="1" inputmode="numeric"')+input('consumption','Consumo informado (km/L)',s.profile.consumption,'number','required min="0" max="100" step="0.1" inputmode="decimal"')+input('reservePerKm','Reserva sugerida por km (R$)',s.reservePerKm,'number','required min="0" max="100" step="0.01" inputmode="decimal"')+input('ipva','Data Venc. IPVA (Opcional)',s.profile.ipva||'','date','')+input('seguro','Data Venc. Seguro (Opcional)',s.profile.seguro||'','date','')+'<p class="notice full">Deixe em branco as datas que não deseja acompanhar.</p>';}
+if(type==='vehicle'){
+  title='Configurar veículo';
+  const vt = s.profile.vehicleType || 'own';
+  const rentW = s.profile.rentWeekly || 650;
+  const rentD = s.profile.rentDay || 'Sexta';
+  const rentWD = s.profile.rentWorkDays || 6;
+  const rentKm = s.profile.rentKmLimit || 1250;
+  const oilKm = s.profile.oilChangeKm || (Number(s.profile.odometer) + 10000);
+  const brakesKm = s.profile.brakesKm || (Number(s.profile.odometer) + 30000);
+  const tiresKm = s.profile.tiresKm || (Number(s.profile.odometer) + 10000);
+
+  const vehicleTypeSelect = `
+    <div class="full" style="background:rgba(52,214,172,0.08);border:1px solid rgba(52,214,172,0.25);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+      <label style="font-weight:750;color:var(--text);margin-bottom:6px;">Tipo de Posse do Veículo
+        <select name="vehicleType" id="cfgVehicleType" onchange="window.toggleVehicleTypeCfg(this.value)">
+          <option value="own" ${vt!=='rent'?'selected':''}>🚗 Carro Próprio (Financiado ou Quitado)</option>
+          <option value="rent" ${vt==='rent'?'selected':''}>🏢 Carro Alugado (Kovi, Localiza, Movida, Unidas...)</option>
+        </select>
+      </label>
+    </div>
+  `;
+
+  const rentFields = `
+    <div id="cfgRentBlock" class="full" style="${vt==='rent'?'':'display:none;'}background:rgba(67,166,255,0.06);border:1px solid rgba(67,166,255,0.2);border-radius:12px;padding:14px;margin-bottom:10px;">
+      <h3 style="color:#38bdf8;margin:0 0 10px;font-size:14px;display:flex;align-items:center;gap:6px;">🏢 Dados do Aluguel do Carro</h3>
+      <div class="form-grid">
+        ${input('rentWeekly','Valor Semanal do Aluguel (R$)',rentW,'number','min="0" step="0.01" inputmode="decimal"')}
+        ${input('rentWorkDays','Dias trabalhados na semana',rentWD,'number','min="1" max="7" step="1" inputmode="numeric"')}
+        ${select('rentDay','Dia da Cobrança',['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'],rentD)}
+        ${input('rentKmLimit','Franquia Semanal de KM (Opcional)',rentKm,'number','min="0" step="10" inputmode="numeric"')}
+      </div>
+      <p class="notice full" style="margin-top:10px;font-size:12px;">O valor diário fixo será calculado para compor seu custo diário real de trabalho.</p>
+    </div>
+  `;
+
+  const ownFields = `
+    <div id="cfgOwnBlock" class="full" style="${vt!=='rent'?'':'display:none;'}">
+      <div class="form-grid">
+        ${input('reservePerKm','Reserva sugerida por km (R$)',s.reservePerKm,'number','required min="0" max="100" step="0.01" inputmode="decimal"')}
+        ${input('oilChangeKm','Próxima Troca de Óleo: hodômetro-alvo',oilKm,'number','min="0" step="100" inputmode="numeric"')}
+        ${input('brakesKm','Próxima Pastilha de Freio: hodômetro-alvo',brakesKm,'number','min="0" step="500" inputmode="numeric"')}
+        ${input('tiresKm','Próximo Rodízio de Pneus: hodômetro-alvo',tiresKm,'number','min="0" step="500" inputmode="numeric"')}
+        ${input('ipva','Data Venc. IPVA (Opcional)',s.profile.ipva||'','date','')}
+        ${input('seguro','Data Venc. Seguro (Opcional)',s.profile.seguro||'','date','')}
+      </div>
+    </div>
+  `;
+
+  fields = vehicleTypeSelect +
+    input('vehicle','Modelo do Veículo',s.profile.vehicle,'text','required maxlength="100"') +
+    input('odometer','Hodômetro Atual (KM)',s.profile.odometer,'number','required min="0" max="10000000" step="1" inputmode="numeric"') +
+    input('consumption','Consumo Médio (KM/L)',s.profile.consumption,'number','required min="0" max="100" step="0.1" inputmode="decimal"') +
+    rentFields +
+    ownFields;
+}
 if(type==='goals'){title='Editar metas';fields=input('daily','Saldo diário desejado (R$)',s.goals.daily,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"')+input('monthly','Saldo mensal desejado (R$)',s.goals.monthly,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"')+input('reserve','Objetivo de reserva (R$)',s.goals.reserve,'number','required min="1" max="10000000" step="0.01" inputmode="decimal"');}
 if(type==='profile'){title='Seu nome';fields=input('name','Como você prefere ser chamado?',s.profile.name,'text','required maxlength="60"');}
 $('#modalTitle').textContent=title;$('#fields').innerHTML=`<div class="form-grid">${fields}</div>`;$('#formError').textContent='';$('#modal').showModal();}
@@ -658,7 +913,27 @@ if(type==='expense')e={id:id||uid(),type:'expense',date:f.date,amount:round(n('a
 const next=JSON.parse(JSON.stringify(s));if(e){const i=next.entries.findIndex(x=>x.id===id);if(i<0)next.entries.push(e);else next.entries[i]=e;}
 if(type==='daily'&&ipvaAutoAmount>=1){const fIdx=next.funds.findIndex(x=>x.date===f.date&&(x.name==='IPVA e Seguro'||x.name==='🛡️ IPVA & Seguro'));if(fIdx>=0)next.funds[fIdx].amount=ipvaAutoAmount;else next.funds.push({id:uid(),date:f.date,name:'IPVA e Seguro',amount:ipvaAutoAmount});}
 if(type==='fund'){const fund={id:id||uid(),date:f.date,name:f.name.trim(),amount:round(n('amount'))};if(!fund.name)return formError('Informe o objetivo do aporte.');const i=next.funds.findIndex(x=>x.id===id);if(i<0)next.funds.push(fund);else next.funds[i]=fund;}
-if(type==='vehicle'){next.profile={...next.profile,vehicle:f.vehicle.trim(),odometer:n('odometer'),serviceAt:n('serviceAt'),consumption:n('consumption'),ipva:f.ipva||'',seguro:f.seguro||''};next.reservePerKm=n('reservePerKm');}
+if(type==='vehicle'){
+  const odo = n('odometer');
+  next.profile={
+    ...next.profile,
+    vehicle:f.vehicle.trim(),
+    odometer:odo,
+    serviceAt:n('serviceAt')||(odo+10000),
+    consumption:n('consumption'),
+    vehicleType:f.vehicleType||'own',
+    rentWeekly:n('rentWeekly')||650,
+    rentWorkDays:n('rentWorkDays')||6,
+    rentDay:f.rentDay||'Sexta',
+    rentKmLimit:n('rentKmLimit')||0,
+    oilChangeKm:n('oilChangeKm')||(odo+10000),
+    brakesKm:n('brakesKm')||(odo+30000),
+    tiresKm:n('tiresKm')||(odo+10000),
+    ipva:f.ipva||'',
+    seguro:f.seguro||''
+  };
+  if(f.reservePerKm!==undefined)next.reservePerKm=n('reservePerKm');
+}
 if(type==='goals')next.goals={daily:n('daily'),monthly:n('monthly'),reserve:n('reserve')};
 if(type==='profile'){if(!f.name.trim())return formError('Informe seu nome.');next.profile.name=f.name.trim();}
 if(!validBackup(next))return formError('Confira os valores informados. Não foi possível salvar.');
@@ -928,14 +1203,370 @@ window.gerarCardWhatsApp = function(targetDate) {
     modal.showModal();
   }
 };
+
+window.toggleVehicleTypeCfg = function(type) {
+  const r = document.getElementById('cfgRentBlock');
+  const o = document.getElementById('cfgOwnBlock');
+  if (r) r.style.display = type === 'rent' ? 'block' : 'none';
+  if (o) o.style.display = type === 'rent' ? 'none' : 'block';
+};
+
+window.resetMaintenance = async function(type) {
+  const s = state();
+  const odo = Number(s.profile.odometer) || 0;
+  const next = JSON.parse(JSON.stringify(s));
+  let label = '';
+  if (type === 'oil') { next.profile.oilChangeKm = odo + 10000; label = 'Troca de óleo e filtro (+10.000 km)'; }
+  if (type === 'brakes') { next.profile.brakesKm = odo + 30000; label = 'Pastilhas de freio (+30.000 km)'; }
+  if (type === 'tires') { next.profile.tiresKm = odo + 10000; label = 'Rodízio de pneus (+10.000 km)'; }
+  await commit(next, `✅ ${label} renovada com sucesso a partir de ${number(odo)} km!`);
+};
+
+window.quickFillFuel = function(val) {
+  const cat = document.querySelector('select[name=category]');
+  const amt = document.querySelector('input[name=amount]');
+  const desc = document.querySelector('input[name=description]');
+  if (cat) cat.value = 'Combustível';
+  if (amt) { amt.value = Number(val).toFixed(2); amt.dispatchEvent(new Event('input')); }
+  if (desc && (!desc.value || desc.value === 'Abastecimento')) desc.value = `Abastecimento R$ ${val}`;
+  if (window.toast) window.toast(`⛽ Abastecimento de R$ ${val} preenchido! Clique em Salvar.`);
+};
+
+window.quickFillFood = function(val) {
+  const cat = document.querySelector('select[name=category]');
+  const amt = document.querySelector('input[name=amount]');
+  const desc = document.querySelector('input[name=description]');
+  if (cat) cat.value = 'Alimentação';
+  if (amt) { amt.value = Number(val).toFixed(2); amt.dispatchEvent(new Event('input')); }
+  if (desc && (!desc.value || desc.value === 'Alimentação / Lanche')) desc.value = `Alimentação R$ ${val}`;
+  if (window.toast) window.toast(`🍔 Refeição de R$ ${val} preenchida! Clique em Salvar.`);
+};
+
+window.quickAddFuelDirect = function(val) {
+  openForm('expense');
+  setTimeout(() => window.quickFillFuel(val), 80);
+};
+
 window.DriverApp={
  async load(){
   const r=await window.Account.api('data');
   const data=r.data?parseBackup(JSON.stringify(r.data)):defaults();
   saved=data;cloudRevision=r.revision;cloudPrevious=r.previous;loadedRaw=JSON.stringify(data);storageIssue='';tabConflict=false;demo=null;render();
+  setTimeout(checkOnboardingInitial, 600);
  },
- clear(){saved=defaults();cloudRevision=0;cloudPrevious=null;loadedRaw=null;demo=null;dirty=false;$('#modal').close();render();}
+ clear(){saved=defaults();cloudRevision=0;cloudPrevious=null;loadedRaw=null;demo=null;dirty=false;$('#modal')?.close();render();}
 };
+
+function checkOnboardingInitial() {
+  if (window.CapitalexSession?.billing?.active && saved.entries.length === 0 && !localStorage.getItem('capitalex_onboarding_done')) {
+    window.openOnboardingWizard();
+  }
+}
+
+window.openOnboardingWizard = function() {
+  let modal = document.getElementById('onboardingDialog');
+  if (!modal) {
+    modal = document.createElement('dialog');
+    modal.id = 'onboardingDialog';
+    modal.style.cssText = 'border: 1px solid #34d6ac; border-radius: 20px; background: #0b1a29; color: #fff; padding: 24px; max-width: 440px; width: 92%; box-shadow: 0 16px 50px rgba(0,0,0,0.8); margin: auto;';
+    document.body.appendChild(modal);
+  }
+
+  let step = 1;
+  const data = {
+    vehicle: '',
+    consumption: 11.5,
+    isRent: false,
+    rentWeekly: 550,
+    grossIncome: 280,
+    kmDriven: 130,
+    fuelExpense: 80
+  };
+
+  function renderStep() {
+    if (step === 1) {
+      modal.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span style="font-size:11px; font-weight:800; color:#34d6ac; text-transform:uppercase; letter-spacing:0.8px;">Passo 1 de 3 • Seu Veículo</span>
+          <button type="button" class="icon-button" onclick="document.getElementById('onboardingDialog').close()" style="color:#94a3b8; font-size:18px;">✕</button>
+        </div>
+        <h2 style="font-size:1.3rem; font-weight:800; margin:0 0 6px; color:#fff;">Qual carro você usa no dia a dia?</h2>
+        <p style="font-size:0.85rem; color:#94a3b8; margin:0 0 16px;">Vamos calibrar o cálculo de combustível e custos por km.</p>
+        
+        <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:#cbd5e1;">Modelo do Carro</label>
+        <input type="text" id="obVehicle" placeholder="Ex: Onix 1.0 Flex, HB20, Kwid..." value="${data.vehicle}" style="width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #1f3b55; background:#060e18; color:#fff; font-size:0.95rem; margin-bottom:14px;">
+
+        <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:#cbd5e1;">Média Estimada de Consumo (KM/L)</label>
+        <input type="number" step="0.1" id="obConsumption" value="${data.consumption}" style="width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #1f3b55; background:#060e18; color:#fff; font-size:0.95rem; margin-bottom:8px;">
+        
+        <div style="display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap;">
+          <button type="button" class="ghost" onclick="document.getElementById('obConsumption').value='9.5'" style="font-size:11px; padding:6px 10px;">Etanol (9.5)</button>
+          <button type="button" class="ghost" onclick="document.getElementById('obConsumption').value='12.0'" style="font-size:11px; padding:6px 10px;">Gasolina (12.0)</button>
+          <button type="button" class="ghost" onclick="document.getElementById('obConsumption').value='14.0'" style="font-size:11px; padding:6px 10px;">GNV/Econômico (14.0)</button>
+        </div>
+
+        <button type="button" id="btnObNext1" class="primary" style="width:100%; padding:14px; font-size:1rem; font-weight:800; border-radius:12px; background:#34d6ac; color:#081320; border:none; cursor:pointer;">
+          Continuar (1/3) →
+        </button>
+      `;
+      document.getElementById('btnObNext1').onclick = () => {
+        data.vehicle = document.getElementById('obVehicle').value.trim() || 'Meu Carro';
+        data.consumption = parseFloat(document.getElementById('obConsumption').value) || 11.5;
+        step = 2;
+        renderStep();
+      };
+    } else if (step === 2) {
+      modal.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span style="font-size:11px; font-weight:800; color:#34d6ac; text-transform:uppercase; letter-spacing:0.8px;">Passo 2 de 3 • Tipo de Uso</span>
+          <button type="button" class="icon-button" onclick="document.getElementById('onboardingDialog').close()" style="color:#94a3b8; font-size:18px;">✕</button>
+        </div>
+        <h2 style="font-size:1.3rem; font-weight:800; margin:0 0 6px; color:#fff;">O carro é próprio ou alugado?</h2>
+        <p style="font-size:0.85rem; color:#94a3b8; margin:0 0 16px;">Isso muda a forma como o app calcula sua diária e provisões.</p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+          <div id="cardProprio" onclick="selectCarType(false)" style="border: 2px solid ${!data.isRent ? '#34d6ac' : '#1f3b55'}; background: ${!data.isRent ? 'rgba(52,214,172,0.1)' : '#060e18'}; border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer;">
+            <div style="font-size:24px; margin-bottom:4px;">🏠</div>
+            <strong style="font-size:13px; color:#fff; display:block;">Carro Próprio</strong>
+            <small style="font-size:11px; color:#94a3b8;">Com reserva mecânica</small>
+          </div>
+          <div id="cardAlugado" onclick="selectCarType(true)" style="border: 2px solid ${data.isRent ? '#34d6ac' : '#1f3b55'}; background: ${data.isRent ? 'rgba(52,214,172,0.1)' : '#060e18'}; border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer;">
+            <div style="font-size:24px; margin-bottom:4px;">🏢</div>
+            <strong style="font-size:13px; color:#fff; display:block;">Alugado</strong>
+            <small style="font-size:11px; color:#94a3b8;">Localiza, Kovi, etc.</small>
+          </div>
+        </div>
+
+        <div id="rentFieldBox" style="display:${data.isRent ? 'block' : 'none'}; margin-bottom:16px; background:#060e18; padding:12px; border-radius:10px; border:1px solid #1f3b55;">
+          <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:#cbd5e1;">Valor do Aluguel por Semana (R$)</label>
+          <input type="number" id="obRentWeekly" value="${data.rentWeekly}" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #2b5074; background:#0b1a29; color:#fff; font-size:0.95rem;">
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="ghost" onclick="step=1; renderStep();" style="flex:1; padding:13px; font-size:0.95rem; border-radius:12px;">← Voltar</button>
+          <button type="button" id="btnObNext2" class="primary" style="flex:2; padding:13px; font-size:0.95rem; font-weight:800; border-radius:12px; background:#34d6ac; color:#081320; border:none; cursor:pointer;">Continuar (2/3) →</button>
+        </div>
+      `;
+      window.selectCarType = function(isRent) {
+        data.isRent = isRent;
+        renderStep();
+      };
+      document.getElementById('btnObNext2').onclick = () => {
+        if (data.isRent) {
+          data.rentWeekly = parseFloat(document.getElementById('obRentWeekly')?.value) || 550;
+        }
+        step = 3;
+        renderStep();
+      };
+    } else if (step === 3) {
+      modal.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span style="font-size:11px; font-weight:800; color:#34d6ac; text-transform:uppercase; letter-spacing:0.8px;">Passo 3 de 3 • Primeira Vitória</span>
+          <button type="button" class="icon-button" onclick="document.getElementById('onboardingDialog').close()" style="color:#94a3b8; font-size:18px;">✕</button>
+        </div>
+        <h2 style="font-size:1.3rem; font-weight:800; margin:0 0 6px; color:#fff;">Quanto você faturou hoje ou ontem?</h2>
+        <p style="font-size:0.85rem; color:#94a3b8; margin:0 0 16px;">Lance uma estimativa para ver seu gráfico e lucro líquido nascerem na hora!</p>
+
+        <label style="display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:#cbd5e1;">Faturamento Bruto Total (Uber + 99)</label>
+        <input type="number" id="obGross" value="${data.grossIncome}" style="width:100%; box-sizing:border-box; padding:12px; border-radius:10px; border:1px solid #1f3b55; background:#060e18; color:#34d6ac; font-size:1.25rem; font-weight:800; font-family:monospace; margin-bottom:12px;">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; margin-bottom:4px; color:#cbd5e1;">KM Rodados</label>
+            <input type="number" id="obKm" value="${data.kmDriven}" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #1f3b55; background:#060e18; color:#fff; font-size:0.95rem;">
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; margin-bottom:4px; color:#cbd5e1;">Combustível Gasto</label>
+            <input type="number" id="obFuel" value="${data.fuelExpense}" style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #1f3b55; background:#060e18; color:#f87171; font-size:0.95rem;">
+          </div>
+        </div>
+
+        <button type="button" id="btnObFinish" class="primary" style="width:100%; padding:15px; font-size:1rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #34d6ac, #059669); color:#081320; border:none; cursor:pointer; box-shadow:0 6px 20px rgba(52,214,172,0.3);">
+          🚀 Concluir e Ver Meu Lucro Real!
+        </button>
+      `;
+      document.getElementById('btnObFinish').onclick = async () => {
+        data.grossIncome = parseFloat(document.getElementById('obGross').value) || 280;
+        data.kmDriven = parseFloat(document.getElementById('obKm').value) || 130;
+        data.fuelExpense = parseFloat(document.getElementById('obFuel').value) || 80;
+
+        const next = JSON.parse(JSON.stringify(state()));
+        next.profile.vehicle = data.vehicle || 'Meu Veículo';
+        next.profile.consumption = data.consumption || 11.5;
+        if (data.isRent) {
+          next.profile.isRent = true;
+          next.profile.rentAmount = data.rentWeekly;
+          next.profile.rentWorkDays = 6;
+          next.profile.rentDaily = Math.round(data.rentWeekly / 6);
+        }
+
+        const today = dateKey();
+        next.entries.push({
+          id: uid(),
+          date: today,
+          amount: data.grossIncome,
+          description: 'Lançamento Inicial de Trabalho',
+          type: 'income',
+          mode: 'daily',
+          km: data.kmDriven,
+          hours: 8,
+          count: Math.max(1, Math.round(data.kmDriven / 12)),
+          app: 'Todos',
+          breakdown: { Uber: data.grossIncome }
+        });
+
+        if (data.fuelExpense > 0) {
+          next.entries.push({
+            id: uid(),
+            date: today,
+            amount: data.fuelExpense,
+            description: 'Abastecimento Inicial',
+            type: 'expense',
+            category: 'Combustível'
+          });
+        }
+
+        localStorage.setItem('capitalex_onboarding_done', 'true');
+        modal.close();
+        await commit(next, '🎉 Parabéns! Seus dados foram configurados e seu lucro real já está na tela!');
+      };
+    }
+  }
+
+  renderStep();
+  modal.showModal();
+};
+
+window.gerarComprovanteRendaPDF = function() {
+  const s = state();
+  const es = selected();
+  const t = totals(es);
+  const userEmail = window.CapitalexSession?.email || 'Motorista Parceiro';
+  const vehicle = s.profile.vehicle || 'Veículo Cadastrado';
+  const now = new Date();
+  const periodText = document.getElementById('periodLabel')?.textContent || 'Período Selecionado';
+  
+  const byApp = {};
+  es.filter(e => e.type === 'income').forEach(e => {
+    if (e.mode === 'daily' && e.breakdown) {
+      Object.entries(e.breakdown).forEach(([k, v]) => byApp[k] = (byApp[k] || 0) + v);
+    } else {
+      byApp[e.app || 'Geral'] = (byApp[e.app || 'Geral'] || 0) + e.amount;
+    }
+  });
+
+  const byCat = {};
+  es.filter(e => e.type === 'expense').forEach(e => {
+    const cat = e.category || 'Outros';
+    byCat[cat] = (byCat[cat] || 0) + e.amount;
+  });
+
+  const hashDoc = 'CD-' + Math.random().toString(36).substring(2, 9).toUpperCase() + '-' + now.getFullYear();
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Por favor, permita pop-ups no seu navegador para emitir o comprovante.');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="utf-8">
+      <title>Comprovante de Rendimentos - Capitalex Driver</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 30px; line-height: 1.5; font-size: 14px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+        .logo-title { font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
+        .logo-sub { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .doc-badge { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-align: right; }
+        .grid-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: 13px; }
+        .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #334155; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+        th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; font-weight: 700; color: #475569; }
+        .text-right { text-align: right; }
+        .font-mono { font-family: monospace; font-size: 14px; }
+        .highlight-box { background: #ecfdf5; border: 2px solid #10b981; border-radius: 8px; padding: 16px; margin: 24px 0; text-align: center; }
+        .highlight-title { font-size: 12px; font-weight: 800; text-transform: uppercase; color: #047857; letter-spacing: 0.8px; }
+        .highlight-value { font-size: 28px; font-weight: 900; color: #065f46; margin: 4px 0; font-family: monospace; }
+        .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 14px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+        .print-btn-bar { margin-bottom: 20px; padding: 12px; background: #0f172a; color: #fff; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-print { background: #10b981; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 13px; }
+        @media print {
+          .print-btn-bar { display: none !important; }
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="print-btn-bar">
+        <span>📄 <strong>Comprovante Gerencial de Rendimentos</strong> pronto para impressão</span>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+      </div>
+
+      <div class="header">
+        <div>
+          <div class="logo-title">CAPITALEX DRIVER</div>
+          <div class="logo-sub">Gestão Financeira e Telemetria para Transporte por Aplicativo</div>
+        </div>
+        <div class="doc-badge">
+          <div>DOCUMENTO Nº: <span style="font-family:monospace">${hashDoc}</span></div>
+          <div style="color:#64748b; font-weight:normal;">Emissão: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+        </div>
+      </div>
+
+      <div class="grid-info">
+        <div><strong>Titular / Motorista:</strong> ${userEmail}</div>
+        <div><strong>Veículo Operacional:</strong> ${vehicle}</div>
+        <div><strong>Período de Apuração:</strong> ${periodText}</div>
+        <div><strong>Quilometragem Percorrida:</strong> ${t.km.toLocaleString('pt-BR')} km</div>
+      </div>
+
+      <div class="section-title">1. Discriminação dos Ganhos Brutos por Plataforma</div>
+      <table>
+        <thead>
+          <tr><th>Plataforma / Origem</th><th class="text-right">Valor Recebido</th></tr>
+        </thead>
+        <tbody>
+          ${Object.entries(byApp).map(([app, val]) => `<tr><td>${app}</td><td class="text-right font-mono">${money(val)}</td></tr>`).join('')}
+          <tr style="font-weight: 800; background: #f8fafc;"><td>TOTAL FATURAMENTO BRUTO</td><td class="text-right font-mono">${money(t.income)}</td></tr>
+        </tbody>
+      </table>
+
+      <div class="section-title">2. Despesas e Custos Operacionais Comprovados</div>
+      <table>
+        <thead>
+          <tr><th>Categoria da Despesa</th><th class="text-right">Valor Gasto</th></tr>
+        </thead>
+        <tbody>
+          ${Object.keys(byCat).length ? Object.entries(byCat).map(([cat, val]) => `<tr><td>${cat}</td><td class="text-right font-mono" style="color:#b91c1c;">- ${money(val)}</td></tr>`).join('') : '<tr><td colspan="2">Nenhuma despesa registrada no período.</td></tr>'}
+          <tr style="font-weight: 800; background: #f8fafc;"><td>TOTAL DE CUSTOS OPERACIONAIS</td><td class="text-right font-mono" style="color:#b91c1c;">- ${money(t.expense)}</td></tr>
+        </tbody>
+      </table>
+
+      <div class="highlight-box">
+        <div class="highlight-title">Rendimento Líquido Efetivo (Lucro Real no Bolso)</div>
+        <div class="highlight-value">${money(t.net)}</div>
+        <div style="font-size:12px; color:#047857;">Margem Operacional Líquida: <strong>${t.income ? (t.net / t.income * 100).toFixed(1) + '%' : '100%'}</strong></div>
+      </div>
+
+      <div class="footer">
+        <div style="max-width: 72%;">
+          <strong>Declaração Gerencial Informativa:</strong> Emitido automaticamente via Capitalex Driver com base exclusivamente nos lançamentos operacionais declarados pelo próprio motorista. Documento utilitário para auxílio de controle gerencial e comprovação de rotina; não substitui demonstrativos contábeis com fé pública nem declarações oficiais à Receita Federal do Brasil. Uber, 99 e inDrive são marcas registradas de seus respectivos proprietários.
+        </div>
+        <div style="text-align:right;">
+          Chave de Autenticidade:<br>
+          <strong style="font-family:monospace;">${hashDoc}</strong>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
+
 window.addEventListener('beforeunload',e=>{if(dirty||saving){e.preventDefault();e.returnValue='';}});
 if(localStorage.getItem('capitalex_theme')!=='dark')document.documentElement.classList.add('light-theme');
 function navigate(){route=location.hash.slice(1);if(!paths[route])route='dashboard';render();}window.addEventListener('hashchange',navigate);navigate();

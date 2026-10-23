@@ -37,7 +37,9 @@ export default async function handler(req, context = {}) {
       'admin-activate': 'POST',
       'admin-block': 'POST',
       'admin-referrals': 'GET',
-      'admin-payout': 'POST'
+      'admin-payout': 'POST',
+      'admin-delete': 'POST',
+      'admin-sales': ['GET', 'POST']
     };
 
     if (![].concat(allowed[action] || []).includes(req.method)) fail(404, 'Rota não encontrada.');
@@ -212,20 +214,34 @@ export default async function handler(req, context = {}) {
           : await saveData(e, u, a, await body(req));
       } else if (action === 'admin-users') {
         if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
-        const users = await db(e, 'driver_accounts?select=user_id,customer_email,subscription_status,subscription_expires_at,updated_at&order=updated_at.desc');
+        let users;
+        try {
+          users = await db(e, 'driver_accounts?select=user_id,customer_email,subscription_status,subscription_expires_at,created_at,updated_at&order=updated_at.desc');
+        } catch {
+          users = await db(e, 'driver_accounts?select=user_id,customer_email,subscription_status,subscription_expires_at,updated_at&order=updated_at.desc');
+        }
         const now = new Date();
         result = {
-          users: users.map(row => {
+          users: (users || []).map(row => {
             const exp = row.subscription_expires_at ? new Date(row.subscription_expires_at) : null;
             const isAct = (row.subscription_status === 'active' || row.subscription_status === 'trial') && exp && exp > now;
             const daysLeft = exp && isAct ? Math.ceil((exp - now) / (1000 * 60 * 60 * 24)) : 0;
+            const lastActive = row.updated_at || row.created_at || null;
+            let daysInactive = 0;
+            if (lastActive) {
+              const diffMs = now.getTime() - new Date(lastActive).getTime();
+              daysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+            }
             return {
               user_id: row.user_id,
               email: row.customer_email || 'Não informado',
               is_active: isAct,
               status: row.subscription_status || 'inactive',
               expires_at: row.subscription_expires_at,
-              days_left: daysLeft
+              days_left: daysLeft,
+              created_at: row.created_at || row.updated_at || null,
+              last_active_at: lastActive,
+              days_inactive: daysInactive
             };
           })
         };
@@ -260,7 +276,7 @@ export default async function handler(req, context = {}) {
         if (rows[0].referred_by) {
           const sponsorEmail = rows[0].referred_by.trim().toLowerCase();
           if (sponsorEmail && sponsorEmail !== targetEmail) {
-            const comm = days >= 90 ? 25.00 : 8.00;
+            const comm = days >= 180 ? 45.00 : (days >= 90 ? 25.00 : 8.00);
             try {
               const spRows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(sponsorEmail)}&select=user_id,referral_balance,referral_total_earned`).catch(() => []);
               if (spRows && spRows[0]) {
@@ -381,6 +397,57 @@ export default async function handler(req, context = {}) {
         }).catch(() => {});
 
         result = { ok: true, message: `Pagamento de comissão para ${sponsorEmail} registrado com sucesso!` };
+      } else if (action === 'admin-abate') {
+        if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
+        const p = await body(req, 1024);
+        const sponsorEmail = (p.sponsor_email || '').trim().toLowerCase();
+        const days = Number(p.days) || 30;
+        const deductAmount = Number(p.amount) || 25.95;
+        if (!sponsorEmail) fail(400, 'Informe o e-mail do padrinho.');
+
+        const spRows = await db(e, `driver_accounts?customer_email=ilike.${encodeURIComponent(sponsorEmail)}&select=user_id,referral_balance,subscription_expires_at`);
+        if (!spRows || !spRows[0]) fail(404, 'Padrinho não encontrado.');
+
+        const sp = spRows[0];
+        const currentBal = Number(sp.referral_balance) || 0;
+        const newBal = Math.max(0, currentBal - deductAmount);
+
+        let baseDate = new Date();
+        if (sp.subscription_expires_at && new Date(sp.subscription_expires_at) > baseDate) {
+          baseDate = new Date(sp.subscription_expires_at);
+        }
+        const newExpires = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+
+        await db(e, `driver_accounts?user_id=eq.${sp.user_id}`, 'PATCH', {
+          referral_balance: newBal,
+          subscription_status: 'active',
+          subscription_expires_at: newExpires
+        });
+
+        await db(e, 'referral_events', 'POST', {
+          sponsor_email: sponsorEmail,
+          referred_email: sponsorEmail,
+          plan_days: days,
+          commission_amount: -deductAmount,
+          payout_status: 'abated_plan'
+        }).catch(() => {});
+
+        result = {
+          ok: true,
+          message: `Saldo de R$ ${deductAmount.toFixed(2).replace('.', ',')} abatido! +${days} dias adicionados à assinatura de ${sponsorEmail} (Válido até: ${new Date(newExpires).toLocaleDateString('pt-BR')}).`
+        };
+      } else if (action === 'admin-sales') {
+        if (!sub.isAdmin) fail(403, 'Acesso permitido apenas para o administrador.');
+        if (req.method === 'GET') {
+          const sales = (a.data && Array.isArray(a.data.admin_sales)) ? a.data.admin_sales : [];
+          result = { sales };
+        } else {
+          const p = await body(req, 1048576);
+          const sales = Array.isArray(p.sales) ? p.sales : [];
+          const updatedData = { ...(a.data || {}), admin_sales: sales };
+          await db(e, `driver_accounts?user_id=eq.${u.id}`, 'PATCH', { data: updatedData });
+          result = { ok: true, count: sales.length };
+        }
       }
     }
   } catch (err) {

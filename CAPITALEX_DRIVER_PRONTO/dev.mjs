@@ -42,10 +42,43 @@ const mockDb = {
       status: 'active',
       expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
       days_left: 365,
-      is_admin: true
+      is_admin: true,
+      created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+      last_active_at: new Date().toISOString()
+    },
+    {
+      email: 'marcos.uber@gmail.com',
+      is_active: true,
+      status: 'active',
+      expires_at: new Date(Date.now() + 18 * 86400000).toISOString(),
+      days_left: 18,
+      is_admin: false,
+      created_at: new Date(Date.now() - 42 * 86400000).toISOString(),
+      last_active_at: new Date(Date.now() - 1 * 86400000).toISOString()
+    },
+    {
+      email: 'rodrigo.99@hotmail.com',
+      is_active: true,
+      status: 'active',
+      expires_at: new Date(Date.now() + 2 * 86400000).toISOString(),
+      days_left: 2,
+      is_admin: false,
+      created_at: new Date(Date.now() - 28 * 86400000).toISOString(),
+      last_active_at: new Date(Date.now() - 4 * 86400000).toISOString()
+    },
+    {
+      email: 'carlos.indrive@gmail.com',
+      is_active: true,
+      status: 'trial',
+      expires_at: new Date(Date.now() + 1 * 86400000).toISOString(),
+      days_left: 1,
+      is_admin: false,
+      created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
+      last_active_at: new Date(Date.now() - 1 * 86400000).toISOString()
     }
   ],
-  driverData: null
+  driverData: null,
+  adminSales: []
 };
 
 const MIME_TYPES = {
@@ -157,7 +190,47 @@ async function handleApiMock(req, res, action) {
     if (!mockDb.currentUser || (!mockDb.currentUser.is_admin && mockDb.currentUser.email !== 'flaviofilhors15@gmail.com')) {
       return json({ error: 'Acesso permitido apenas para o administrador.' }, 403);
     }
-    return json({ users: mockDb.users });
+    const now = Date.now();
+    const enrichedUsers = mockDb.users.map(u => {
+      const lastActive = u.last_active_at || u.created_at || null;
+      let daysInactive = 0;
+      if (lastActive) {
+        daysInactive = Math.max(0, Math.floor((now - new Date(lastActive).getTime()) / 86400000));
+      }
+      return {
+        ...u,
+        last_active_at: lastActive,
+        days_inactive: daysInactive
+      };
+    });
+    return json({ users: enrichedUsers });
+  }
+
+  if (action === 'admin-abate') {
+    if (!mockDb.currentUser || (!mockDb.currentUser.is_admin && mockDb.currentUser.email !== 'flaviofilhors15@gmail.com')) {
+      return json({ error: 'Acesso permitido apenas para o administrador.' }, 403);
+    }
+    const email = (body.sponsor_email || '').trim().toLowerCase();
+    const days = Number(body.days) || 30;
+    const amount = Number(body.amount) || 25.95;
+    let user = mockDb.users.find(u => u.email === email);
+    if (!user) {
+      user = { email, is_active: true, status: 'active', expires_at: null, days_left: days, is_admin: false };
+      mockDb.users.push(user);
+    }
+    let base = Date.now();
+    if (user.expires_at && new Date(user.expires_at).getTime() > base) {
+      base = new Date(user.expires_at).getTime();
+    }
+    const newExp = new Date(base + days * 86400000).toISOString();
+    user.is_active = true;
+    user.status = 'active';
+    user.expires_at = newExp;
+    user.days_left = Math.ceil((new Date(newExp) - Date.now()) / 86400000);
+    return json({
+      ok: true,
+      message: `Saldo de R$ ${amount.toFixed(2).replace('.', ',')} abatido! +${days} dias adicionados à assinatura de ${email}!`
+    });
   }
 
   if (action === 'admin-activate') {
@@ -198,6 +271,14 @@ async function handleApiMock(req, res, action) {
     const email = (body.email || '').trim().toLowerCase();
     mockDb.users = mockDb.users.filter(u => u.email !== email);
     return json({ ok: true, message: `O motorista ${email} foi excluído permanentemente.` });
+  }
+
+  if (action === 'admin-sales') {
+    if (req.method === 'GET') {
+      return json({ sales: mockDb.adminSales || [] });
+    }
+    mockDb.adminSales = Array.isArray(body.sales) ? body.sales : [];
+    return json({ ok: true, count: mockDb.adminSales.length });
   }
 
   return json({ error: 'Rota não encontrada.' }, 404);

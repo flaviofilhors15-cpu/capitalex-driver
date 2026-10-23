@@ -99,6 +99,16 @@
     .actions-cell { display: flex; gap: 8px; flex-wrap: nowrap; }
     .actions-cell .btn { padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; }
     
+    .metric-card.clickable { cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; user-select: none; }
+    .metric-card.clickable:hover { transform: translateY(-3px); border-color: var(--green); box-shadow: 0 10px 28px rgba(52, 214, 172, 0.2); }
+    .metric-card.active-kpi { border-color: var(--green); background: rgba(52, 214, 172, 0.08); }
+    .badge-trial { background: #1e3a8a; color: #93c5fd; }
+    .badge-risk { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-cold { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+    .badge-healthy { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .btn-wa { background: #25D366; color: #081320; font-weight: 750; }
+    .btn-wa:hover { background: #20ba5a; }
+
     .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
     
     @media (max-width: 768px) {
@@ -154,19 +164,39 @@
 
       <!-- General Tab -->
       <div id="tabContentGeneral">
-        <!-- Metrics -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <span class="metric-title">Assinantes Ativos</span>
+        <!-- Metrics Summary KPI Cards (Click to filter) -->
+        <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;">
+          <div class="metric-card clickable active-kpi" id="cardKpiAll" onclick="setFiltro('all')" title="Clique para filtrar todos">
+            <span class="metric-title">Total Motoristas</span>
+            <span class="metric-value" id="metricTotal">0</span>
+          </div>
+          <div class="metric-card clickable" id="cardKpiPaying" onclick="setFiltro('paying')" title="Clique para filtrar ativos pagantes">
+            <span class="metric-title" style="color: var(--green);">Ativos Pagantes</span>
             <span class="metric-value metric-green" id="metricAtivos">0</span>
           </div>
-          <div class="metric-card">
-            <span class="metric-title">MRR Estimado (Recorrência)</span>
-            <span class="metric-value" id="metricMRR">R$ 0,00</span>
+          <div class="metric-card clickable" id="cardKpiTrial" onclick="setFiltro('trial')" title="Clique para filtrar motoristas em teste grátis">
+            <span class="metric-title" style="color: #93c5fd;">Em Teste Grátis</span>
+            <span class="metric-value" id="metricTrial" style="color: #93c5fd;">0</span>
           </div>
-          <div class="metric-card">
-            <span class="metric-title" style="color: var(--orange-text);">Vencendo em 3 Dias</span>
+          <div class="metric-card clickable" id="cardKpiRisk" onclick="setFiltro('risk')" title="Clique para filtrar motoristas em risco de churn (3-5d sem lançar)">
+            <span class="metric-title" style="color: #fbbf24;">Em Risco (3-5d)</span>
+            <span class="metric-value" id="metricEmRisco" style="color: #fbbf24;">0</span>
+          </div>
+          <div class="metric-card clickable" id="cardKpiExpiring" onclick="setFiltro('expiring')" title="Clique para filtrar vencendo em até 3 dias">
+            <span class="metric-title" style="color: var(--orange-text);">Vencendo (≤ 3d)</span>
             <span class="metric-value" id="metricVencendo" style="color: var(--orange-text);">0</span>
+          </div>
+          <div class="metric-card clickable" id="cardKpiExpired" onclick="setFiltro('expired')" title="Clique para filtrar inativos/expirados">
+            <span class="metric-title" style="color: var(--red-text);">Inativos / Vencidos</span>
+            <span class="metric-value" id="metricExpirados" style="color: var(--red-text);">0</span>
+          </div>
+          <div class="metric-card" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, transparent 100%); border-color: rgba(56, 189, 248, 0.4);">
+            <span class="metric-title" style="color: #38bdf8;">Taxa Conversão</span>
+            <span class="metric-value" id="metricConversao" style="font-size: 1.8rem; color: #38bdf8;">0%</span>
+          </div>
+          <div class="metric-card" style="background: linear-gradient(135deg, rgba(52, 214, 172, 0.12) 0%, transparent 100%); border-color: rgba(52, 214, 172, 0.4);">
+            <span class="metric-title" style="color: var(--green);">MRR Recorrência</span>
+            <span class="metric-value metric-green" id="metricMRR" style="font-size: 1.8rem;">R$ 0,00</span>
           </div>
         </div>
 
@@ -182,6 +212,7 @@
           <input type="email" id="targetEmail" placeholder="E-mail do motorista..." required>
           <button class="btn btn-30" onclick="liberarAcesso(30)">+ 30 Dias (Mensal)</button>
           <button class="btn btn-90" onclick="liberarAcesso(90)">+ 90 Dias (Trimestral)</button>
+          <button class="btn" style="background: #a78bfa; color: #081320; font-weight: 750;" onclick="liberarAcesso(180)">+ 180 Dias (Semestral)</button>
           <button class="btn btn-block" onclick="bloquearAcesso()">Bloquear</button>
           <button class="btn" style="background: #374151; color: #f3f4f6;" onclick="ocultarAcessoTopo()">👁️ Ocultar</button>
         </div>
@@ -201,8 +232,11 @@
         <div class="filters-row">
           <input type="text" id="filtroEmail" class="search-input" placeholder="🔍 Buscar por e-mail..." oninput="aplicarFiltros()">
           <button class="filter-btn active" data-filter="all" onclick="setFiltro('all', this)">Todos</button>
-          <button class="filter-btn" data-filter="active" onclick="setFiltro('active', this)">Ativos</button>
-          <button class="filter-btn" data-filter="expiring" onclick="setFiltro('expiring', this)">Vencendo</button>
+          <button class="filter-btn" data-filter="paying" onclick="setFiltro('paying', this)">Ativos Pagantes</button>
+          <button class="filter-btn" data-filter="trial" onclick="setFiltro('trial', this)">Em Teste</button>
+          <button class="filter-btn" data-filter="trial_ending" onclick="setFiltro('trial_ending', this)">⏳ Fim Teste (≤1d)</button>
+          <button class="filter-btn" data-filter="risk" onclick="setFiltro('risk', this)">🟡 Em Risco (3-5d)</button>
+          <button class="filter-btn" data-filter="expiring" onclick="setFiltro('expiring', this)">Vencendo (≤ 3d)</button>
           <button class="filter-btn" data-filter="expired" onclick="setFiltro('expired', this)">Inativos</button>
           <button class="filter-btn" data-filter="hidden" onclick="setFiltro('hidden', this)" id="btnFiltroHidden">Ocultos (0)</button>
         </div>
@@ -212,13 +246,15 @@
             <thead>
               <tr>
                 <th>E-mail do Motorista</th>
-                <th>Status da Assinatura</th>
+                <th>Status</th>
+                <th>Saúde / Atividade</th>
+                <th>Criado em</th>
                 <th>Data de Vencimento</th>
-                <th>Renovação Rápida</th>
+                <th>Ações & WhatsApp</th>
               </tr>
             </thead>
             <tbody id="usersList">
-              <tr><td colspan="4" class="empty-state">Carregando batalhão...</td></tr>
+              <tr><td colspan="6" class="empty-state">Carregando batalhão...</td></tr>
             </tbody>
           </table>
         </div>
@@ -227,31 +263,68 @@
       
       <!-- Sales Tab -->
       <div id="tabContentSales" style="display: none;">
-        <div class="metrics-grid">
-          <div class="metric-card" style="background: linear-gradient(135deg, rgba(52, 214, 172, 0.1) 0%, transparent 100%); border-color: var(--green);">
-            <span class="metric-title" style="color: var(--green);">Lucro Total (Vendas)</span>
+        <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px;">
+          <div class="metric-card" style="background: linear-gradient(135deg, rgba(52, 214, 172, 0.12) 0%, transparent 100%); border-color: var(--green);">
+            <span class="metric-title" style="color: var(--green);">Lucro Total Líquido</span>
             <span class="metric-value metric-green" id="metricTotalSales">R$ 0,00</span>
           </div>
           <div class="metric-card">
             <span class="metric-title">Vendas este Mês</span>
             <span class="metric-value" id="metricMonthSales">R$ 0,00</span>
           </div>
+          <div class="metric-card" style="border-color: rgba(56, 189, 248, 0.4);">
+            <span class="metric-title" style="color: #38bdf8;">Novas Vendas (Mês)</span>
+            <span class="metric-value" id="metricNovasMonth" style="color: #38bdf8;">R$ 0,00</span>
+          </div>
+          <div class="metric-card" style="border-color: rgba(167, 139, 250, 0.4);">
+            <span class="metric-title" style="color: #a78bfa;">Renovações (Mês)</span>
+            <span class="metric-value" id="metricRenovMonth" style="color: #a78bfa;">R$ 0,00</span>
+          </div>
         </div>
         
         <div class="panel-section">
           <div class="panel-header">
             <div>
-              <h2>Desempenho de Vendas</h2>
-              <p>O gráfico sobe automaticamente ao liberar acessos e deduz valores de contas ocultas ou retiradas manuais.</p>
+              <h2>Desempenho de Vendas & Lucro</h2>
+              <p id="salesChartSubtitle">Comparativo mensal: Novas Vendas (primeira adesão), Renovações e Lucro Líquido.</p>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+              <div style="background: #060e18; border: 1px solid var(--line); border-radius: 10px; padding: 3px; display: inline-flex; gap: 4px;">
+                <button id="btnViewMonthly" onclick="setSalesChartView('monthly')" class="filter-btn active" style="padding: 6px 12px; font-size: 0.8rem;">📊 Visão Mensal</button>
+                <button id="btnViewDaily" onclick="setSalesChartView('daily')" class="filter-btn" style="padding: 6px 12px; font-size: 0.8rem;">📈 Visão Diária (14d)</button>
+              </div>
               <button onclick="adicionarVendaManual()" class="btn btn-30" style="font-size: 0.85rem;">+ Adicionar Venda</button>
               <button onclick="registrarRetiradaManual()" class="btn btn-block" style="font-size: 0.85rem; background: #dc2626; color: #fff;">− Registrar Retirada</button>
               <button onclick="zerarVendas()" class="btn" style="font-size: 0.85rem; background: #374151; color: #d1d5db;">🗑️ Limpar Vendas</button>
             </div>
           </div>
-          <div style="height: 300px; width: 100%; position: relative;">
-            <canvas id="salesChart"></canvas>
+          <div style="height: 330px; width: 100%; position: relative;">
+            <canvas id="salesChart" style="cursor: pointer;"></canvas>
+          </div>
+
+          <!-- Card de Detalhes ao Clicar no Gráfico -->
+          <div id="chartClickDetails" style="display: none; margin-top: 18px; background: #060e18; border: 1px solid var(--green); border-radius: 14px; padding: 16px 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">📊</span>
+                <h4 id="chartDetailTitle" style="font-size: 1rem; font-weight: 800; color: #fff;"></h4>
+              </div>
+              <button onclick="document.getElementById('chartClickDetails').style.display='none'" style="background: transparent; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 4px;" title="Fechar detalhes">✕</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;" id="chartDetailGrid">
+              <div style="background: #121e2d; border-radius: 10px; padding: 12px; border-left: 4px solid #38bdf8;">
+                <span style="color: #38bdf8; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">Novas Vendas</span>
+                <div id="chartDetailNovas" style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 4px;"></div>
+              </div>
+              <div style="background: #121e2d; border-radius: 10px; padding: 12px; border-left: 4px solid #a78bfa;">
+                <span style="color: #a78bfa; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">Renovações</span>
+                <div id="chartDetailRenov" style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 4px;"></div>
+              </div>
+              <div style="background: #121e2d; border-radius: 10px; padding: 12px; border-left: 4px solid #34d6ac;">
+                <span style="color: #34d6ac; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">Lucro Líquido</span>
+                <div id="chartDetailLucro" style="font-size: 1.2rem; font-weight: 800; color: #34d6ac; margin-top: 4px;"></div>
+              </div>
+            </div>
           </div>
 
           <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line);">
@@ -360,8 +433,9 @@
     let todosUsuarios = [];
     let currentFilter = 'all';
     let salesChart = null;
+    let salesChartView = 'monthly'; // 'monthly' ou 'daily'
 
-    // Persistência local para Vendas e Usuários Ocultos
+    // Persistência local & Nuvem para Vendas e Usuários Ocultos
     function getLocalDateKey(dInput) {
       const d = dInput ? new Date(dInput) : new Date();
       if (isNaN(d.getTime())) return '';
@@ -401,6 +475,23 @@
       return (email && email !== 'não informado' && hidden.includes(email)) || (userId && hidden.includes(userId));
     }
 
+    // Telefones / WhatsApp dos Motoristas
+    function getDriverPhones() {
+      try {
+        return JSON.parse(localStorage.getItem('admin_driver_phones') || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function setDriverPhone(email, phone) {
+      if (!email) return;
+      const cleanEmail = email.trim().toLowerCase();
+      const phones = getDriverPhones();
+      phones[cleanEmail] = phone;
+      localStorage.setItem('admin_driver_phones', JSON.stringify(phones));
+    }
+
     function getSales() {
       try {
         const raw = JSON.parse(localStorage.getItem('admin_sales') || '[]');
@@ -410,20 +501,60 @@
       }
     }
 
+    // Sincronização em Nuvem (Supabase) do Histórico de Vendas
+    async function carregarVendasNuvem() {
+      try {
+        const res = await api('admin-sales');
+        if (res && Array.isArray(res.sales) && res.sales.length > 0) {
+          localStorage.setItem('admin_sales', JSON.stringify(res.sales));
+          localStorage.setItem('admin_sales_initialized', 'true');
+        } else {
+          // Se a nuvem estiver vazia mas houver vendas locais, envia para a nuvem
+          const local = getSales();
+          if (local.length > 0) {
+            await salvarVendasNuvem(local);
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar vendas da nuvem:', err);
+      }
+    }
+
+    async function salvarVendasNuvem(sales) {
+      try {
+        await api('admin-sales', 'POST', { sales });
+      } catch (err) {
+        console.warn('Erro ao sincronizar vendas na nuvem:', err);
+      }
+    }
+
     function addSale(value, plan = 30, email = '', type = 'venda', note = '') {
       const sales = getSales();
       const id = Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+      const cleanEmail = (email || '').trim().toLowerCase();
+      
+      // Auto-classifica em 'nova' ou 'renovacao' se for venda positiva
+      let category = 'nova';
+      if (Number(value) < 0 || type === 'retirada') {
+        category = 'retirada';
+      } else if (cleanEmail) {
+        const jaTeveVenda = sales.some(s => (s.email || '').toLowerCase() === cleanEmail && Number(s.value) > 0);
+        category = jaTeveVenda ? 'renovacao' : 'nova';
+      }
+
       sales.push({
         id,
         date: new Date().toISOString(),
         value: Number(value) || 0,
         plan,
-        email: (email || '').trim().toLowerCase(),
+        email: cleanEmail,
         type: type || (value < 0 ? 'retirada' : 'venda'),
+        category,
         note: note || (type === 'retirada' ? 'Retirada Manual' : (plan === 90 ? 'Trimestral (90d)' : 'Mensal (30d)'))
       });
       localStorage.setItem('admin_sales', JSON.stringify(sales));
       localStorage.setItem('admin_sales_initialized', 'true');
+      salvarVendasNuvem(sales);
       renderChart();
     }
 
@@ -442,6 +573,7 @@
       let sales = getSales();
       sales = sales.filter(s => s.id !== id);
       localStorage.setItem('admin_sales', JSON.stringify(sales));
+      salvarVendasNuvem(sales);
       renderChart();
     }
 
@@ -449,8 +581,24 @@
       if (!confirm('ATENÇÃO: Deseja apagar TODO o histórico de vendas e zerar o gráfico?')) return;
       localStorage.setItem('admin_sales', JSON.stringify([]));
       localStorage.setItem('admin_sales_initialized', 'true');
+      salvarVendasNuvem([]);
       renderChart();
       alert('Histórico de vendas limpo com sucesso.');
+    }
+
+    function setSalesChartView(view) {
+      salesChartView = view;
+      const btnM = document.getElementById('btnViewMonthly');
+      const btnD = document.getElementById('btnViewDaily');
+      if (btnM) btnM.classList.toggle('active', view === 'monthly');
+      if (btnD) btnD.classList.toggle('active', view === 'daily');
+      const sub = document.getElementById('salesChartSubtitle');
+      if (sub) {
+        sub.textContent = view === 'monthly'
+          ? 'Comparativo mensal: Novas Vendas (primeira adesão), Renovações e Lucro Líquido.'
+          : 'Evolução diária de receitas dos últimos 14 dias.';
+      }
+      renderChart();
     }
 
     async function api(rota, metodo = 'GET', body = null) {
@@ -494,13 +642,14 @@
       location.reload();
     }
 
-    function showAdminPanel(email) {
+    async function showAdminPanel(email) {
       document.getElementById('adminLoginCard').style.display = 'none';
       document.getElementById('adminPanel').style.display = 'block';
       document.getElementById('headerAdminEmail').style.display = 'block';
       document.getElementById('headerAdminEmail').textContent = email;
       document.getElementById('logoutBtn').style.display = 'inline-flex';
       carregarUsuarios();
+      await carregarVendasNuvem();
       renderChart();
     }
 
@@ -536,8 +685,9 @@
         carregarUsuarios();
 
         // Adiciona a venda ao lucro com o e-mail do motorista
-        const price = dias === 30 ? 25.95 : 69.90;
-        addSale(price, dias, email, 'venda', dias === 90 ? 'Trimestral (+90d)' : 'Mensal (+30d)');
+        const price = dias === 180 ? 119.90 : (dias === 90 ? 69.90 : 25.95);
+        const planNote = dias === 180 ? 'Semestral (+180d)' : (dias === 90 ? 'Trimestral (+90d)' : 'Mensal (+30d)');
+        addSale(price, dias, email, 'venda', planNote);
       } catch (err) {
         msg.textContent = '❌ ' + err.message; msg.style.color = 'var(--red)';
       } finally {
@@ -623,23 +773,74 @@
     }
 
     function atualizarMetricas() {
-      let ativos = 0; let vencendo = 0;
+      let total = 0;
+      let pagantes = 0;
+      let trial = 0;
+      let vencendo = 0;
+      let expirados = 0;
+      let emRisco = 0;
+
       todosUsuarios.forEach(u => {
-        if (!isUserHidden(u) && u.is_active) {
-          ativos++;
-          if (u.days_left <= 3) vencendo++;
+        if (!isUserHidden(u)) {
+          total++;
+          if (u.is_active) {
+            if (u.status === 'trial') {
+              trial++;
+            } else {
+              pagantes++;
+            }
+            if (u.days_left <= 3) vencendo++;
+          } else {
+            expirados++;
+          }
+
+          const inact = typeof u.days_inactive === 'number' ? u.days_inactive : null;
+          if (u.is_active && inact !== null && inact >= 3 && inact <= 5) {
+            emRisco++;
+          }
         }
       });
-      const mrr = ativos * 25.95;
-      document.getElementById('metricAtivos').textContent = ativos;
-      document.getElementById('metricMRR').textContent = mrr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      document.getElementById('metricVencendo').textContent = vencendo;
+
+      const mrr = pagantes * 25.95;
+      const taxaConversao = total > 0 ? ((pagantes / total) * 100).toFixed(1) : '0,0';
+
+      const elTotal = document.getElementById('metricTotal');
+      if (elTotal) elTotal.textContent = total;
+      const elAtivos = document.getElementById('metricAtivos');
+      if (elAtivos) elAtivos.textContent = pagantes;
+      const elTrial = document.getElementById('metricTrial');
+      if (elTrial) elTrial.textContent = trial;
+      const elRisco = document.getElementById('metricEmRisco');
+      if (elRisco) elRisco.textContent = emRisco;
+      const elVenc = document.getElementById('metricVencendo');
+      if (elVenc) elVenc.textContent = vencendo;
+      const elExp = document.getElementById('metricExpirados');
+      if (elExp) elExp.textContent = expirados;
+      const elConv = document.getElementById('metricConversao');
+      if (elConv) elConv.textContent = taxaConversao.replace('.', ',') + '%';
+      const elMRR = document.getElementById('metricMRR');
+      if (elMRR) elMRR.textContent = mrr.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
     function setFiltro(tipo, btnEl) {
       currentFilter = tipo;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btnEl.classList.add('active');
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        if (b.dataset.filter === tipo) b.classList.add('active');
+        else if (b.dataset.filter) b.classList.remove('active');
+      });
+      if (btnEl && btnEl.classList) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+      }
+      
+      // Destaca o card KPI correspondente
+      document.querySelectorAll('.metric-card.clickable').forEach(c => c.classList.remove('active-kpi'));
+      const kpiMap = { all: 'cardKpiAll', paying: 'cardKpiPaying', trial: 'cardKpiTrial', risk: 'cardKpiRisk', expiring: 'cardKpiExpiring', expired: 'cardKpiExpired' };
+      if (kpiMap[tipo]) {
+        const cEl = document.getElementById(kpiMap[tipo]);
+        if (cEl) cEl.classList.add('active-kpi');
+      }
+
       aplicarFiltros();
     }
 
@@ -652,18 +853,19 @@
 
       let filtrados = [];
       if (currentFilter === 'hidden') {
-        // Exibe apenas quem foi ocultado
         filtrados = todosUsuarios.filter(u => {
           const e = (u.email || '').trim().toLowerCase();
           return isUserHidden(u) && e.includes(termo);
         });
       } else {
-        // Exibe normais removendo os ocultos
         filtrados = todosUsuarios.filter(u => {
           const e = (u.email || '').trim().toLowerCase();
           return !isUserHidden(u) && e.includes(termo);
         });
-        if (currentFilter === 'active') filtrados = filtrados.filter(u => u.is_active && u.days_left > 3);
+        if (currentFilter === 'paying') filtrados = filtrados.filter(u => u.is_active && u.status !== 'trial');
+        else if (currentFilter === 'trial') filtrados = filtrados.filter(u => u.is_active && u.status === 'trial');
+        else if (currentFilter === 'trial_ending') filtrados = filtrados.filter(u => u.is_active && u.status === 'trial' && u.days_left <= 1);
+        else if (currentFilter === 'risk') filtrados = filtrados.filter(u => u.is_active && typeof u.days_inactive === 'number' && u.days_inactive >= 3 && u.days_inactive <= 5);
         else if (currentFilter === 'expiring') filtrados = filtrados.filter(u => u.is_active && u.days_left <= 3);
         else if (currentFilter === 'expired') filtrados = filtrados.filter(u => !u.is_active);
       }
@@ -686,10 +888,58 @@
       document.getElementById('targetEmail').focus();
     }
 
+    // 📲 Lembrete 1-Click WhatsApp com mensagem personalizada e persistência do telefone
+    function lembrarRenovacaoWhatsApp(email, daysLeft, status, daysInactive) {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      if (!cleanEmail || cleanEmail === 'não informado') return alert('E-mail do motorista inválido.');
+      
+      const phones = getDriverPhones();
+      let phone = phones[cleanEmail] || '';
+      
+      const input = prompt(
+        `Digite o número do WhatsApp do motorista (${cleanEmail}):\n(Com DDD, apenas números, ex: 11999998888)\n\nFicará salvo para os próximos disparos!`,
+        phone
+      );
+      if (input === null) return;
+      
+      const digits = input.replace(/\D/g, '');
+      if (digits.length < 10) return alert('Por favor, informe um número de WhatsApp válido com DDD (ex: 11999998888).');
+      
+      setDriverPhone(cleanEmail, digits);
+
+      let msg = '';
+      const inact = typeof daysInactive === 'number' ? daysInactive : -1;
+      
+      // Se estiver em risco (3-5 dias sem lançar) e ainda ativo, oferece mensagem acolhedora de retenção
+      if (inact >= 3 && inact <= 5 && status !== 'inactive') {
+        const querRetencao = confirm(`Este motorista está há ${inact} dias sem registrar ganhos/despesas!\n\nDeseja enviar a mensagem de Check-in de Suporte/Retenção?\n\n• OK = Mensagem de Apoio/Retenção\n• Cancelar = Lembrete Financeiro Normal`);
+        if (querRetencao) {
+          msg = `Olá parceiro(a)! 🚗💨 Aqui é o Flávio da equipe do Capitalex Driver.\n\nNotei aqui que você não registrou seus ganhos nos últimos ${inact} dias... Aconteceu algum imprevisto com o carro ou está precisando de alguma ajuda para configurar o app ou calcular suas médias?\n\nEstou por aqui para o que precisar, pode contar comigo! 🚀`;
+        }
+      }
+
+      if (!msg) {
+        if (status === 'trial') {
+          if (daysLeft <= 1) {
+            msg = `Olá parceiro(a)! 🚗💨 Aqui é da equipe do Capitalex Driver.\n\nSeu teste grátis no aplicativo vence ${daysLeft === 0 ? 'hoje' : 'amanhã'}! Para não perder seu histórico diário de lucro, médias por km e relatórios de combustível, ative sua assinatura no Pix:\n\n🔑 Chave Pix: flaviofilhors15@gmail.com\n💰 R$ 25,95 (Mensal) ou R$ 69,90 (Trimestral)\n\nBasta nos enviar o comprovante por aqui que seu acesso é liberado imediatamente! 🚀`;
+          } else {
+            msg = `Olá parceiro(a)! 🚗💨 Aqui é da equipe do Capitalex Driver.\n\nSeu teste grátis no aplicativo está em andamento (restam ${daysLeft} dias). Como estão sendo seus resultados de lucro real?\n\nQualquer dúvida com os lançamentos de combustível ou km, estou à disposição por aqui! 🚀`;
+          }
+        } else if (daysLeft <= 0) {
+          msg = `Olá parceiro(a)! 🚗💨 Aqui é da equipe do Capitalex Driver.\n\nPassando para avisar que sua assinatura do aplicativo venceu. Para continuar acompanhando seus ganhos líquidos sem interrupções:\n\n🔑 Chave Pix: flaviofilhors15@gmail.com\n💰 R$ 25,95 (Mensal) ou R$ 69,90 (Trimestral com desconto)\n\nEnvie o comprovante por aqui que liberamos na hora! 🚀`;
+        } else {
+          msg = `Olá parceiro(a)! 🚗💨 Aqui é da equipe do Capitalex Driver.\n\nPassando para lembrar que restam apenas ${daysLeft} dia(s) para o vencimento do seu plano no Capitalex.\n\nPara renovar e manter tudo ativo:\n🔑 Chave Pix: flaviofilhors15@gmail.com\n💰 R$ 25,95 (Mensal) ou R$ 69,90 (Trimestral)\n\nBasta me enviar o comprovante por aqui! 🚀`;
+        }
+      }
+
+      const waUrl = `https://wa.me/55${digits}?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, '_blank');
+    }
+
     function renderizarTabela(lista) {
       const tbody = document.getElementById('usersList');
       if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-state">${currentFilter === 'hidden' ? 'Nenhum motorista oculto.' : 'Nenhum motorista encontrado nesse filtro.'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">${currentFilter === 'hidden' ? 'Nenhum motorista oculto.' : 'Nenhum motorista encontrado nesse filtro.'}</td></tr>`;
         return;
       }
 
@@ -697,10 +947,28 @@
         let badge = '<span class="badge badge-expired">● Inativo</span>';
         let expira = '<span style="color: var(--muted)">—</span>';
         if (u.is_active) {
-          badge = u.days_left <= 3
-            ? `<span class="badge badge-expiring">⚠ Vence em ${u.days_left}d</span>`
-            : `<span class="badge badge-active">✔ Ativo (${u.days_left}d)</span>`;
-          expira = new Date(u.expires_at).toLocaleDateString('pt-BR');
+          if (u.status === 'trial') {
+            badge = `<span class="badge badge-trial">⏳ Teste (${u.days_left}d)</span>`;
+          } else {
+            badge = u.days_left <= 3
+              ? `<span class="badge badge-expiring">⚠ Vence em ${u.days_left}d</span>`
+              : `<span class="badge badge-active">✔ Ativo (${u.days_left}d)</span>`;
+          }
+          expira = u.expires_at ? new Date(u.expires_at).toLocaleDateString('pt-BR') : '—';
+        }
+
+        const criadoEm = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '<span style="color: var(--muted)">—</span>';
+
+        const inact = typeof u.days_inactive === 'number' ? u.days_inactive : null;
+        let healthBadge = '<span style="color: var(--muted)">—</span>';
+        if (inact !== null) {
+          if (inact <= 2) {
+            healthBadge = `<span class="badge badge-healthy" title="Último registro recente: ${inact === 0 ? 'hoje' : 'há ' + inact + 'd'}">🟢 Ativo (${inact === 0 ? 'Hoje' : inact + 'd'})</span>`;
+          } else if (inact >= 3 && inact <= 5) {
+            healthBadge = `<span class="badge badge-risk" title="Atenção: sem registros há ${inact} dias!">🟡 Em Risco (${inact}d)</span>`;
+          } else {
+            healthBadge = `<span class="badge badge-cold" title="Sem lançar há ${inact} dias">🔴 Frio (${inact}d)</span>`;
+          }
         }
 
         const isHiddenView = currentFilter === 'hidden';
@@ -709,6 +977,10 @@
              <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-block" style="background: #7f1d1d; color: #fca5a5; padding: 7px 11px; font-size: 0.8rem;" title="Excluir definitivamente do banco">Excluir</button>`
           : `<button onclick="ocultarUsuario('${u.email}', '${u.user_id || ''}')" class="btn btn-block" style="background: #374151; color: #d1d5db; padding: 7px 11px; font-size: 0.8rem;" title="Ocultar da lista e do gráfico">Ocultar</button>
              <button onclick="excluirUsuarioDefinitivo('${u.email}', '${u.user_id || ''}')" class="btn btn-block" style="background: #7f1d1d; color: #fca5a5; padding: 7px 11px; font-size: 0.8rem;" title="Excluir definitivamente do banco">Excluir</button>`;
+
+        const botaoWhats = (u.email && u.email !== 'Não informado')
+          ? `<button onclick="lembrarRenovacaoWhatsApp('${u.email}', ${u.days_left || 0}, '${u.status || ''}', ${typeof u.days_inactive === 'number' ? u.days_inactive : -1})" class="btn btn-wa" style="padding: 7px 11px; font-size: 0.8rem;" title="Cobrar / Lembrar Renovação via WhatsApp">📲 WhatsApp</button>`
+          : '';
 
         return `
           <tr>
@@ -721,10 +993,13 @@
               </div>
             </td>
             <td>${badge}</td>
+            <td>${healthBadge}</td>
+            <td><strong>${criadoEm}</strong></td>
             <td><strong>${expira}</strong></td>
             <td>
               <div class="actions-cell" style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button onclick="selecionarUsuario('${u.email}')" class="btn btn-30" style="padding: 7px 11px; font-size: 0.8rem;" title="Renovar / Editar">Renovar</button>
+                <button onclick="selecionarUsuario('${u.email}')" class="btn btn-30" style="padding: 7px 11px; font-size: 0.8rem;" title="Renovar / Liberar">Renovar</button>
+                ${botaoWhats}
                 ${botaoAcao}
               </div>
             </td>
@@ -742,7 +1017,7 @@
       alert('✅ Venda de R$ ' + num.toFixed(2).replace('.', ',') + ' registrada!');
     }
 
-    // Chart logic
+    // Chart logic com suporte a Visão Mensal (Novas vs Renovações vs Lucro) e Visão Diária
     function renderChart() {
       try {
         let sales = getSales();
@@ -768,177 +1043,296 @@
                 plan: planDays,
                 email: (u.email || '').toLowerCase(),
                 type: 'venda',
+                category: 'nova',
                 note: planDays === 90 ? 'Trimestral (90d)' : 'Mensal (30d)'
               };
             });
             localStorage.setItem('admin_sales', JSON.stringify(sales));
+            salvarVendasNuvem(sales);
           }
         }
 
-        // 🌟 FILTRO DE CONTAS OCULTAS: se o e-mail do motorista está ocultado, os valores DELE SÃO RETIRADOS DO GRÁFICO!
+        // Filtro de contas ocultas: deduz valores do gráfico se o motorista estiver oculto
         const visibleSales = sales.filter(s => {
           if (!s.email) return true;
           return !hiddenUsers.includes(s.email.toLowerCase());
         });
 
-        let total = 0;
-        let monthTotal = 0;
-        const todayStr = getLocalDateKey();
-        const currentMonth = todayStr.slice(0, 7);
-        const byDay = {};
-        
-        visibleSales.forEach(s => {
+        // Ordena por data para determinar com precisão novas vendas vs renovações por motorista
+        const sortedSales = [...visibleSales].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const seenDrivers = new Set();
+        const categorized = sortedSales.map(s => {
           const val = Number(s.value) || 0;
-          total += val;
-          const dayKey = getLocalDateKey(s.date);
-          if (dayKey.slice(0, 7) === currentMonth) monthTotal += val;
-          byDay[dayKey] = (byDay[dayKey] || 0) + val;
+          const email = (s.email || '').trim().toLowerCase();
+          let cat = s.category || 'nova';
+          if (val < 0 || s.type === 'retirada') {
+            cat = 'retirada';
+          } else if (email) {
+            if (seenDrivers.has(email)) {
+              cat = 'renovacao';
+            } else {
+              seenDrivers.add(email);
+              cat = 'nova';
+            }
+          }
+          return { ...s, val, category: cat };
         });
 
-        document.getElementById('metricTotalSales').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        document.getElementById('metricMonthSales').textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        let total = 0;
+        let monthTotal = 0;
+        let monthNovas = 0;
+        let monthRenov = 0;
+        const currentMonth = getLocalDateKey().slice(0, 7);
+        const byDay = {};
 
-        renderSalesHistory(sales);
+        categorized.forEach(s => {
+          total += s.val;
+          const dayKey = getLocalDateKey(s.date);
+          const mKey = dayKey.slice(0, 7);
+          if (mKey === currentMonth) {
+            monthTotal += s.val;
+            if (s.category === 'nova') monthNovas += s.val;
+            else if (s.category === 'renovacao') monthRenov += s.val;
+          }
+          byDay[dayKey] = (byDay[dayKey] || 0) + s.val;
+        });
+
+        const elTot = document.getElementById('metricTotalSales');
+        if (elTot) elTot.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const elMon = document.getElementById('metricMonthSales');
+        if (elMon) elMon.textContent = monthTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const elNov = document.getElementById('metricNovasMonth');
+        if (elNov) elNov.textContent = monthNovas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const elRen = document.getElementById('metricRenovMonth');
+        if (elRen) elRen.textContent = monthRenov.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        renderSalesHistory(categorized);
 
         const chartContainer = document.getElementById('tabContentSales');
         if (chartContainer && chartContainer.style.display === 'none') {
            return;
         }
 
-        // Build array of last 14 days
-        const labels = [];
-        const data = [];
-        for (let i = 13; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dayKey = getLocalDateKey(d);
-          labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
-          data.push(byDay[dayKey] || 0);
-        }
-
         const canvas = document.getElementById('salesChart');
         if (!canvas) return;
 
-        // Se Chart.js estiver disponível, usa Chart.js
-        if (window.Chart) {
-          if (salesChart) salesChart.destroy();
-          const ctx = canvas.getContext('2d');
-          Chart.defaults.color = '#849fb8';
-          Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-          
-          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, 'rgba(52, 214, 172, 0.45)');
-          gradient.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
-          
-          salesChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{
-                label: 'Vendas diárias (R$)',
-                data,
-                backgroundColor: gradient,
-                borderColor: '#34d6ac',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.35,
-                pointBackgroundColor: '#081320',
-                pointBorderColor: '#34d6ac',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              interaction: { mode: 'index', intersect: false },
-              plugins: { 
-                legend: { display: false }, 
-                tooltip: { cornerRadius: 8, padding: 12, backgroundColor: '#081320', titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' }, displayColors: false } 
-              },
-              scales: {
-                y: { beginAtZero: true, grid: { color: '#1f3550' }, border: { display: false }, ticks: { callback: v => 'R$ ' + v } },
-                x: { grid: { display: false }, border: { display: false } }
-              }
-            }
-          });
-        } else {
-          // Fallback nativo Canvas caso Chart.js ainda esteja carregando
-          const ctx = canvas.getContext('2d');
-          const w = canvas.parentElement.clientWidth || 600;
-          const h = 300;
-          canvas.width = w;
-          canvas.height = h;
-
-          ctx.clearRect(0, 0, w, h);
-          const maxVal = Math.max(...data, 100);
-          const padL = 60, padR = 20, padT = 30, padB = 40;
-          const plotW = w - padL - padR;
-          const plotH = h - padT - padB;
-
-          // Grid lines
-          ctx.strokeStyle = '#1f3550';
-          ctx.lineWidth = 1;
-          for (let step = 0; step <= 4; step++) {
-            const y = padT + (plotH / 4) * step;
-            ctx.beginPath();
-            ctx.moveTo(padL, y);
-            ctx.lineTo(w - padR, y);
-            ctx.stroke();
-
-            const v = Math.round(maxVal - (maxVal / 4) * step);
-            ctx.fillStyle = '#849fb8';
-            ctx.font = '11px sans-serif';
-            ctx.textAlign = 'right';
-            ctx.fillText('R$ ' + v, padL - 10, y + 4);
+        if (salesChartView === 'monthly') {
+          // ==================== VISÃO MENSAL (ÚLTIMOS 6 MESES) ====================
+          const monthKeys = [];
+          const labels = [];
+          const dNow = new Date();
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date(dNow.getFullYear(), dNow.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthKeys.push(key);
+            const rawLabel = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '');
+            labels.push(rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1));
           }
 
-          // Points
-          const pts = data.map((val, idx) => {
-            const x = padL + (idx / (data.length - 1)) * plotW;
-            const y = padT + plotH - (val / maxVal) * plotH;
-            return { x, y, val, label: labels[idx] };
+          const dataNovas = monthKeys.map(() => 0);
+          const dataRenov = monthKeys.map(() => 0);
+          const dataLucro = monthKeys.map(() => 0);
+
+          categorized.forEach(s => {
+            const mKey = getLocalDateKey(s.date).slice(0, 7);
+            const idx = monthKeys.indexOf(mKey);
+            if (idx !== -1) {
+              if (s.category === 'nova') dataNovas[idx] += s.val;
+              else if (s.category === 'renovacao') dataRenov[idx] += s.val;
+              dataLucro[idx] += s.val;
+            }
           });
 
-          // Draw gradient area
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x, padT + plotH);
-          pts.forEach(p => ctx.lineTo(p.x, p.y));
-          ctx.lineTo(pts[pts.length - 1].x, padT + plotH);
-          ctx.closePath();
-          const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-          grad.addColorStop(0, 'rgba(52, 214, 172, 0.35)');
-          grad.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
-          ctx.fillStyle = grad;
-          ctx.fill();
+          if (window.Chart) {
+            if (salesChart) salesChart.destroy();
+            const ctx = canvas.getContext('2d');
+            Chart.defaults.color = '#849fb8';
+            Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 
-          // Draw line
-          ctx.beginPath();
-          ctx.strokeStyle = '#34d6ac';
-          ctx.lineWidth = 3;
-          pts.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-          ctx.stroke();
-
-          // Draw dots & labels
-          pts.forEach(p => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#081320';
-            ctx.fill();
-            ctx.strokeStyle = '#34d6ac';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
+            salesChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    type: 'bar',
+                    label: 'Novas Vendas (R$)',
+                    data: dataNovas,
+                    backgroundColor: '#38bdf8',
+                    borderRadius: 6,
+                    maxBarThickness: 38
+                  },
+                  {
+                    type: 'bar',
+                    label: 'Renovações (R$)',
+                    data: dataRenov,
+                    backgroundColor: '#a78bfa',
+                    borderRadius: 6,
+                    maxBarThickness: 38
+                  },
+                  {
+                    type: 'line',
+                    label: 'Lucro Líquido (R$)',
+                    data: dataLucro,
+                    borderColor: '#34d6ac',
+                    backgroundColor: 'rgba(52, 214, 172, 0.15)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.35,
+                    pointBackgroundColor: '#081320',
+                    pointBorderColor: '#34d6ac',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                onClick: (event, elements) => {
+                  if (!elements || elements.length === 0) return;
+                  const idx = elements[0].index;
+                  mostrarDetalhesMesGrafico(labels[idx], dataNovas[idx] || 0, dataRenov[idx] || 0, dataLucro[idx] || 0);
+                },
+                plugins: {
+                  legend: {
+                    display: true,
+                    position: 'top',
+                    labels: { color: '#edf5fc', font: { weight: '600', size: 12 }, boxWidth: 14 }
+                  },
+                  tooltip: {
+                    cornerRadius: 8,
+                    padding: 12,
+                    backgroundColor: '#081320',
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    callbacks: {
+                      label: function(c) {
+                        return `${c.dataset.label}: ${c.raw.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    grid: { color: '#1f3550' },
+                    ticks: { callback: v => 'R$ ' + v }
+                  },
+                  x: {
+                    grid: { display: false }
+                  }
+                }
+              }
+            });
+          } else {
+            // Fallback nativo canvas
+            const ctx = canvas.getContext('2d');
+            const w = canvas.parentElement.clientWidth || 600;
+            const h = 320;
+            canvas.width = w; canvas.height = h;
+            ctx.clearRect(0, 0, w, h);
             ctx.fillStyle = '#849fb8';
-            ctx.font = '10px sans-serif';
+            ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(p.label, p.x, h - 12);
-          });
+            ctx.fillText('Gráfico mensal consolidado carregando...', w / 2, h / 2);
+          }
+        } else {
+          // ==================== VISÃO DIÁRIA (ÚLTIMOS 14 DIAS) ====================
+          const labels = [];
+          const data = [];
+          for (let i = 13; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dayKey = getLocalDateKey(d);
+            labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            data.push(byDay[dayKey] || 0);
+          }
+
+          if (window.Chart) {
+            if (salesChart) salesChart.destroy();
+            const ctx = canvas.getContext('2d');
+            Chart.defaults.color = '#849fb8';
+            Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(52, 214, 172, 0.45)');
+            gradient.addColorStop(1, 'rgba(52, 214, 172, 0.0)');
+            
+            salesChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [{
+                  label: 'Vendas diárias (R$)',
+                  data,
+                  backgroundColor: gradient,
+                  borderColor: '#34d6ac',
+                  borderWidth: 3,
+                  fill: true,
+                  tension: 0.35,
+                  pointBackgroundColor: '#081320',
+                  pointBorderColor: '#34d6ac',
+                  pointBorderWidth: 2,
+                  pointRadius: 4,
+                  pointHoverRadius: 6
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                onClick: (event, elements) => {
+                  if (!elements || elements.length === 0) return;
+                  const idx = elements[0].index;
+                  mostrarDetalhesDiaGrafico(labels[idx], data[idx] || 0);
+                },
+                plugins: { 
+                  legend: { display: false }, 
+                  tooltip: {
+                    cornerRadius: 8, padding: 12, backgroundColor: '#081320',
+                    titleFont: { size: 14 }, bodyFont: { size: 14, weight: 'bold' },
+                    displayColors: false,
+                    callbacks: {
+                      label: c => `Receita: ${c.raw.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                    }
+                  } 
+                },
+                scales: {
+                  y: { beginAtZero: true, grid: { color: '#1f3550' }, border: { display: false }, ticks: { callback: v => 'R$ ' + v } },
+                  x: { grid: { display: false }, border: { display: false } }
+                }
+              }
+            });
+          }
         }
       } catch (err) {
         console.error('Erro ao renderizar gráfico:', err);
       }
+    }
+
+    function mostrarDetalhesMesGrafico(mes, novas, renov, lucro) {
+      const box = document.getElementById('chartClickDetails');
+      if (!box) return;
+      box.style.display = 'block';
+      document.getElementById('chartDetailTitle').textContent = `Mês Selecionado: ${mes}`;
+      document.getElementById('chartDetailNovas').textContent = novas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('chartDetailRenov').textContent = renov.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('chartDetailLucro').textContent = lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function mostrarDetalhesDiaGrafico(dia, valor) {
+      const box = document.getElementById('chartClickDetails');
+      if (!box) return;
+      box.style.display = 'block';
+      document.getElementById('chartDetailTitle').textContent = `Dia Selecionado: ${dia}`;
+      document.getElementById('chartDetailNovas').textContent = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      document.getElementById('chartDetailRenov').textContent = '—';
+      document.getElementById('chartDetailLucro').textContent = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -954,17 +1348,26 @@
       tbody.innerHTML = [...sales].reverse().map(s => {
         const val = Number(s.value) || 0;
         const isRetirada = s.type === 'retirada' || val < 0;
+        const isRenov = s.category === 'renovacao';
         const isHidden = s.email && hiddenUsers.includes(s.email.toLowerCase());
         const displayVal = Math.abs(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const dataStr = new Date(s.date).toLocaleDateString('pt-BR') + ' ' + new Date(s.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const desc = s.note || (s.email ? s.email : (isRetirada ? 'Retirada Manual' : 'Venda Manual'));
+
+        let typeBadge = '';
+        if (isRetirada) {
+          typeBadge = '<span class="badge badge-expired" style="font-size:0.75rem;">− Retirada</span>';
+        } else if (isRenov) {
+          typeBadge = '<span class="badge" style="background:#5b21b6;color:#ddd6fe;font-size:0.75rem;">🔄 Renovação</span>';
+        } else {
+          typeBadge = '<span class="badge" style="background:#075985;color:#bae6fd;font-size:0.75rem;">✨ Nova Venda</span>';
+        }
+
         return `
           <tr style="${isHidden ? 'opacity: 0.45; background: rgba(0,0,0,0.25);' : ''}">
             <td style="font-size: 0.85rem; color: var(--muted);">${dataStr}</td>
             <td>
-              <span class="badge ${isRetirada ? 'badge-expired' : 'badge-active'}" style="font-size: 0.75rem;">
-                ${isRetirada ? '− Retirada' : '+ Venda'}
-              </span>
+              ${typeBadge}
               ${isHidden ? '<span class="badge" style="background:#374151;color:#9ca3af;margin-left:4px;font-size:0.7rem;">(Oculto)</span>' : ''}
             </td>
             <td>
@@ -1006,7 +1409,10 @@
               : '<span style="color: var(--muted)">Não cadastrada</span>';
 
             const pagarBtn = hasBal
-              ? `<button onclick="pagarComissaoPix('${esc(s.email)}', ${s.balance}, this)" class="btn btn-30" style="background: #22c55e; color: #081320; font-weight: 800;">💸 Marcar Pix Feito</button>`
+              ? `<div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                   <button onclick="pagarComissaoPix('${esc(s.email)}', ${s.balance}, this)" class="btn btn-30" style="background: #22c55e; color: #081320; font-weight: 800; padding: 6px 10px; font-size: 0.8rem;" title="Registrar que já pagou via Pix">💸 Marcar Pix</button>
+                   <button onclick="abaterAssinaturaPadrinho('${esc(s.email)}', ${s.balance}, this)" class="btn btn-90" style="background: #38bdf8; color: #081320; font-weight: 800; padding: 6px 10px; font-size: 0.8rem;" title="Abater do saldo e dar +30 dias de assinatura">⚡ Abater (+30d)</button>
+                 </div>`
               : '<span class="badge badge-active" style="background:rgba(52,214,172,0.15);color:#34d6ac;">Em dia</span>';
 
             return `
@@ -1026,9 +1432,12 @@
           evTbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma comissão registrada ainda.</td></tr>';
         } else {
           evTbody.innerHTML = events.map(e => {
-            const statusBadge = e.payout_status === 'paid'
-              ? '<span class="badge badge-active">✔ Pago no Pix</span>'
-              : '<span class="badge badge-expiring">⏳ A Pagar</span>';
+            let statusBadge = '<span class="badge badge-expiring">⏳ A Pagar</span>';
+            if (e.payout_status === 'paid') {
+              statusBadge = '<span class="badge badge-active">✔ Pago no Pix</span>';
+            } else if (e.payout_status === 'abated_plan') {
+              statusBadge = '<span class="badge" style="background:#0284c7;color:#e0f2fe;">⚡ Abatido no Plano</span>';
+            }
             const dt = new Date(e.created_at).toLocaleDateString('pt-BR');
             return `
               <tr>
@@ -1054,6 +1463,22 @@
         const res = await api('admin-payout', 'POST', { sponsor_email: email });
         alert('✅ ' + (res.message || 'Pagamento registrado com sucesso!'));
         carregarIndicações();
+      } catch (err) {
+        alert('❌ Erro: ' + err.message);
+      } finally {
+        if (btnEl) btnEl.disabled = false;
+      }
+    }
+
+    async function abaterAssinaturaPadrinho(email, balance, btnEl) {
+      const deduct = Math.min(balance, 25.95);
+      if (!confirm(`Deseja abater R$ ${deduct.toFixed(2).replace('.', ',')} do saldo de comissões de ${email} e ADICIONAR +30 DIAS na assinatura dele?`)) return;
+      if (btnEl) btnEl.disabled = true;
+      try {
+        const res = await api('admin-abate', 'POST', { sponsor_email: email, days: 30, amount: deduct });
+        alert('✅ ' + (res.message || 'Assinatura abatida com sucesso!'));
+        carregarIndicações();
+        carregarUsuarios();
       } catch (err) {
         alert('❌ Erro: ' + err.message);
       } finally {

@@ -240,6 +240,16 @@
     const zapText = encodeURIComponent(`Olá Flavio! Fiz o Pix para liberar minha assinatura no Capitalex Driver.\nMeu e-mail cadastrado é: ${session?.email || ''}`);
     const zapUrl = `https://wa.me/${WHATSAPP_NUM}?text=${zapText}`;
 
+    // Calcula histórico de faturamento se existir
+    let totalFaturado = 0;
+    try {
+      const ent = (typeof saved !== 'undefined' && saved.entries) ? saved.entries : [];
+      totalFaturado = ent.filter(e => e.type === 'income').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    } catch {}
+    const faturamentoTexto = totalFaturado > 0 
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFaturado)
+      : 'R$ 2.450,00';
+
     sp.innerHTML = `
       ${b.active ? `
         <div style="background: ${b.isTrial ? 'rgba(52,214,172,0.1)' : '#064e3b'}; color: #34d399; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; margin-bottom: 14px; text-align: center; border: 1px solid #059669; box-shadow: 0 4px 14px rgba(6,78,59,0.3);">
@@ -248,25 +258,35 @@
         <button id="btnBackToApp" type="button" style="width: 100%; background: #34d6ac; color: #081320; border: none; padding: 13px; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 0.98rem; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(52,214,172,0.25);">
           ← Voltar ao Meu Painel
         </button>
-        ${b.isTrial ? '<div style="font-size: 0.88rem; color: #94a3b8; margin: 4px 0 12px; font-weight: 500;">Antecipe seu plano para continuar rodando com tranquilidade quando os 3 dias acabarem:</div>' : ''}
+        ${b.isTrial ? '<div style="font-size: 0.88rem; color: #94a3b8; margin: 4px 0 12px; font-weight: 500;">Garanta seu plano com antecedência para não ter seu painel interrompido:</div>' : ''}
       ` : `
-        <div style="font-size: 0.88rem; color: #94a3b8; margin: 4px 0 12px; font-weight: 500;">
-          Escolha seu plano e faça o Pix para liberar o painel:
+        <div style="background: linear-gradient(135deg, rgba(52, 214, 172, 0.08) 0%, rgba(8, 19, 32, 0.95) 100%); border: 1px solid rgba(52, 214, 172, 0.35); border-radius: 14px; padding: 14px; margin-bottom: 14px; text-align: left;">
+          <div style="font-size: 0.82rem; font-weight: 800; color: #34d6ac; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">🛡️ Mantenha o Controle do seu Lucro</div>
+          <p style="font-size: 0.88rem; color: #e2e8f0; line-height: 1.45; margin: 0;">
+            Nos últimos dias, você registrou <strong>${faturamentoTexto}</strong> e calculou seu lucro líquido real sem ser enganado pelo faturamento bruto! Não volte a rodar no escuro. Por apenas <strong>R$ 0,86 por dia</strong>, continue no controle total do seu bolso.
+          </p>
         </div>
       `}
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-        <div style="background: rgba(8, 19, 32, 0.7); border: 1px solid #1f3b55; border-radius: 12px; padding: 13px 10px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
-          <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">Plano Mensal</div>
-          <div style="font-size: 1.4rem; font-weight: 800; color: #34d6ac; margin: 3px 0; letter-spacing: -0.5px;">R$ 25,95</div>
-          <div style="font-size: 0.72rem; color: #64748b; font-weight: 500;">30 dias de acesso</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px;">
+        <div style="background: rgba(8, 19, 32, 0.7); border: 1px solid #1f3b55; border-radius: 12px; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Mensal</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: #34d6ac; margin: 2px 0;">R$ 25,95</div>
+          <div style="font-size: 0.68rem; color: #64748b;">R$ 0,86/dia</div>
         </div>
 
-        <div style="background: linear-gradient(145deg, #0d282e 0%, #081a22 100%); border: 2px solid #34d6ac; border-radius: 12px; padding: 13px 10px; text-align: center; position: relative; box-shadow: 0 0 16px rgba(52, 214, 172, 0.12); display: flex; flex-direction: column; justify-content: center;">
-          <span style="position: absolute; top: -11px; right: 10px; background: #34d6ac; color: #041d16; font-size: 0.65rem; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase;">✦ Economize</span>
-          <div style="font-size: 0.72rem; color: #a7f3d0; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;">Trimestral</div>
-          <div style="font-size: 1.4rem; font-weight: 800; color: #38bdf8; margin: 3px 0; letter-spacing: -0.5px;">R$ 69,90</div>
-          <div style="font-size: 0.72rem; color: #64748b; font-weight: 500;">90 dias com desconto</div>
+        <div style="background: linear-gradient(145deg, #0d282e 0%, #081a22 100%); border: 2px solid #34d6ac; border-radius: 12px; padding: 12px 8px; text-align: center; position: relative; box-shadow: 0 0 16px rgba(52, 214, 172, 0.12); display: flex; flex-direction: column; justify-content: center;">
+          <span style="position: absolute; top: -10px; right: 6px; background: #34d6ac; color: #041d16; font-size: 0.62rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">✦ Popular</span>
+          <div style="font-size: 0.7rem; color: #a7f3d0; font-weight: 700; text-transform: uppercase;">Trimestral</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: #38bdf8; margin: 2px 0;">R$ 69,90</div>
+          <div style="font-size: 0.68rem; color: #64748b;">R$ 23,30/mês</div>
+        </div>
+
+        <div style="background: linear-gradient(145deg, #1e1338 0%, #0d0a1a 100%); border: 1px solid #a78bfa; border-radius: 12px; padding: 12px 8px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: center;">
+          <span style="position: absolute; top: -10px; right: 6px; background: #a78bfa; color: #1e1338; font-size: 0.62rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Safra</span>
+          <div style="font-size: 0.7rem; color: #ddd6fe; font-weight: 700; text-transform: uppercase;">Semestral</div>
+          <div style="font-size: 1.25rem; font-weight: 800; color: #c4b5fd; margin: 2px 0;">R$ 119,90</div>
+          <div style="font-size: 0.68rem; color: #a78bfa;">R$ 19,98/mês</div>
         </div>
       </div>
 
@@ -301,6 +321,11 @@
         <button id="btnLogout" type="button" style="background: rgba(239, 68, 68, 0.08); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); padding: 9px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
           Sair
         </button>
+      </div>
+
+      <div style="margin-top: 14px; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; border-top: 1px solid #1a2d42; padding-top: 10px;">
+        Ao assinar você concorda com nossos <a href="termos.html" target="_blank" style="color: var(--green); text-decoration: underline;">Termos de Uso</a> e <a href="privacidade.html" target="_blank" style="color: var(--green); text-decoration: underline;">Privacidade</a>.<br>
+        <span style="opacity: 0.75;">Software utilitário independente. Uber, 99 e inDrive são marcas de seus respectivos proprietários.</span>
       </div>
 
       ${b.isAdmin ? `
