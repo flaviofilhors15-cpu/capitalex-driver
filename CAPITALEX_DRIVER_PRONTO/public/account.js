@@ -161,9 +161,23 @@
         tabLog.style.color = 'var(--muted)';
         tabLog.style.border = '1px solid #1f3550';
       }
-      if (title) title.textContent = 'Criar sua conta';
-      if (desc) desc.textContent = 'Cadastre seu e-mail e crie uma senha para começar seus 3 dias grátis na hora.';
-      if (submitBtn) submitBtn.textContent = 'Criar conta e começar 3 dias grátis';
+
+      const chosenPlan = localStorage.getItem('capitalex_chosen_plan');
+      const planNames = {
+        mensal: 'Mensal (R$ 25,95)',
+        trimestral: 'Trimestral (R$ 69,90)',
+        semestral: 'Semestral Safra (R$ 119,90)'
+      };
+
+      if (chosenPlan && planNames[chosenPlan]) {
+        if (title) title.innerHTML = `Plano <span style="color:var(--green);">${planNames[chosenPlan]}</span>`;
+        if (desc) desc.textContent = 'Crie seu e-mail e sua senha de acesso para ir direto ao pagamento Pix.';
+        if (submitBtn) submitBtn.textContent = 'Continuar para Pagamento Pix ➔';
+      } else {
+        if (title) title.textContent = 'Criar sua conta';
+        if (desc) desc.textContent = 'Cadastre seu e-mail e crie uma senha para começar seus 7 dias grátis na hora.';
+        if (submitBtn) submitBtn.textContent = 'Criar conta e começar 7 dias grátis';
+      }
       if (passInput) passInput.setAttribute('autocomplete', 'new-password');
     } else {
       if (tabLog) {
@@ -201,7 +215,7 @@
     setAuthMode(mode);
   }
 
-  function showPaywall() {
+  function showPaywall(targetPlan) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     stage('stepPlan');
     lock();
@@ -217,20 +231,24 @@
     if (!sp) return;
     sp.hidden = false;
 
+    if (targetPlan) {
+      localStorage.setItem('capitalex_chosen_plan', targetPlan);
+    }
+
     const b = session?.billing || { active: false, daysLeft: 0 };
     if (b.active && b.isTrial) {
       el('gateTitle').textContent = 'Seu Teste Grátis está ativo!';
       el('gateDescription').textContent = session?.email || '';
     } else if (!b.active) {
       if (b.status === 'trial_expired') {
-        el('gateTitle').textContent = 'Seu teste de 3 dias terminou!';
+        el('gateTitle').textContent = 'Seu teste de 7 dias terminou!';
         el('gateDescription').textContent = 'Escolha seu plano para continuar acompanhando seus lucros e não perder seu histórico:';
       } else if (b.status === 'expired') {
         el('gateTitle').textContent = 'Sua assinatura venceu!';
         el('gateDescription').textContent = 'Renove seu plano para continuar acessando seu painel:';
       } else {
-        el('gateTitle').textContent = 'Ative seu acesso ao Capitalex';
-        el('gateDescription').textContent = session?.email || '';
+        el('gateTitle').textContent = '⚡ Ativação Imediata via Pix';
+        el('gateDescription').textContent = session?.email ? session.email : 'Faça o Pix do plano escolhido e envie o comprovante para liberação imediata:';
       }
     } else {
       el('gateTitle').textContent = 'Sua assinatura';
@@ -250,6 +268,14 @@
       ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFaturado)
       : 'R$ 2.450,00';
 
+    const guestEmailHtml = !session?.email ? `
+      <div style="background: rgba(14, 34, 54, 0.7); border: 1px solid #244b70; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; text-align: left;">
+        <label for="payEmailInp" style="font-size: 0.82rem; font-weight: 700; color: #a9c7df; display: block; margin-bottom: 6px;">📧 Digite seu e-mail para identificação do Pix:</label>
+        <input type="email" id="payEmailInp" placeholder="seuemail@exemplo.com" value="${localStorage.getItem('capitalex_user_email') || ''}" style="width: 100%; padding: 10px 12px; border-radius: 8px; background: #06121e; border: 1px solid #2b5780; color: #ffffff; font-size: 0.95rem;">
+        <small style="color: #64748b; font-size: 0.72rem; display: block; margin-top: 4px;">O administrador usará este e-mail para liberar o seu acesso com 1 clique.</small>
+      </div>
+    ` : '';
+
     sp.innerHTML = `
       ${b.active ? `
         <div style="background: ${b.isTrial ? 'rgba(52,214,172,0.1)' : '#064e3b'}; color: #34d399; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; margin-bottom: 14px; text-align: center; border: 1px solid #059669; box-shadow: 0 4px 14px rgba(6,78,59,0.3);">
@@ -263,26 +289,28 @@
         <div style="background: linear-gradient(135deg, rgba(52, 214, 172, 0.08) 0%, rgba(8, 19, 32, 0.95) 100%); border: 1px solid rgba(52, 214, 172, 0.35); border-radius: 14px; padding: 14px; margin-bottom: 14px; text-align: left;">
           <div style="font-size: 0.82rem; font-weight: 800; color: #34d6ac; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">🛡️ Mantenha o Controle do seu Lucro</div>
           <p style="font-size: 0.88rem; color: #e2e8f0; line-height: 1.45; margin: 0;">
-            Nos últimos dias, você registrou <strong>${faturamentoTexto}</strong> e calculou seu lucro líquido real sem ser enganado pelo faturamento bruto! Não volte a rodar no escuro. Por apenas <strong>R$ 0,86 por dia</strong>, continue no controle total do seu bolso.
+            ${totalFaturado > 0 ? `Nos últimos dias, você registrou <strong>${faturamentoTexto}</strong> e calculou seu lucro líquido real!` : 'Pare de rodar no escuro e perder dinheiro para as taxas dos apps.'} Por apenas <strong>R$ 0,86 por dia</strong>, tenha controle total do seu bolso.
           </p>
         </div>
       `}
 
+      ${guestEmailHtml}
+
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 14px;">
-        <div style="background: rgba(8, 19, 32, 0.7); border: 1px solid #1f3b55; border-radius: 12px; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+        <div id="payCardMonthly" style="cursor: pointer; background: rgba(8, 19, 32, 0.7); border: 1px solid #1f3b55; border-radius: 12px; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: all 0.2s ease;">
           <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Mensal</div>
           <div style="font-size: 1.25rem; font-weight: 800; color: #34d6ac; margin: 2px 0;">R$ 25,95</div>
           <div style="font-size: 0.68rem; color: #64748b;">R$ 0,86/dia</div>
         </div>
 
-        <div style="background: linear-gradient(145deg, #0d282e 0%, #081a22 100%); border: 2px solid #34d6ac; border-radius: 12px; padding: 12px 8px; text-align: center; position: relative; box-shadow: 0 0 16px rgba(52, 214, 172, 0.12); display: flex; flex-direction: column; justify-content: center;">
+        <div id="payCardQuarterly" style="cursor: pointer; background: linear-gradient(145deg, #0d282e 0%, #081a22 100%); border: 2px solid #34d6ac; border-radius: 12px; padding: 12px 8px; text-align: center; position: relative; box-shadow: 0 0 16px rgba(52, 214, 172, 0.12); display: flex; flex-direction: column; justify-content: center; transition: all 0.2s ease;">
           <span style="position: absolute; top: -10px; right: 6px; background: #34d6ac; color: #041d16; font-size: 0.62rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">✦ Popular</span>
           <div style="font-size: 0.7rem; color: #a7f3d0; font-weight: 700; text-transform: uppercase;">Trimestral</div>
           <div style="font-size: 1.25rem; font-weight: 800; color: #38bdf8; margin: 2px 0;">R$ 69,90</div>
           <div style="font-size: 0.68rem; color: #64748b;">R$ 23,30/mês</div>
         </div>
 
-        <div style="background: linear-gradient(145deg, #1e1338 0%, #0d0a1a 100%); border: 1px solid #a78bfa; border-radius: 12px; padding: 12px 8px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: center;">
+        <div id="payCardSemiannual" style="cursor: pointer; background: linear-gradient(145deg, #1e1338 0%, #0d0a1a 100%); border: 1px solid #a78bfa; border-radius: 12px; padding: 12px 8px; text-align: center; position: relative; display: flex; flex-direction: column; justify-content: center; transition: all 0.2s ease;">
           <span style="position: absolute; top: -10px; right: 6px; background: #a78bfa; color: #1e1338; font-size: 0.62rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Safra</span>
           <div style="font-size: 0.7rem; color: #ddd6fe; font-weight: 700; text-transform: uppercase;">Semestral</div>
           <div style="font-size: 1.25rem; font-weight: 800; color: #c4b5fd; margin: 2px 0;">R$ 119,90</div>
@@ -293,7 +321,7 @@
       <div style="background: rgba(4, 12, 22, 0.8); border: 1px solid #1e3b58; border-radius: 12px; padding: 13px 16px; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #7e9bb6;">Chave Pix (CPF)</span>
-          <span style="font-size: 0.72rem; color: #34d6ac; font-weight: 600; background: rgba(52, 214, 172, 0.1); padding: 2px 8px; border-radius: 10px;">Liberação Instantânea</span>
+          <span style="font-size: 0.72rem; color: #34d6ac; font-weight: 600; background: rgba(52, 214, 172, 0.1); padding: 2px 8px; border-radius: 10px;" id="pixPlanBadge">Valor: R$ 69,90 (Trimestral)</span>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px;">
           <div style="flex: 1; min-width: 0;">
@@ -306,7 +334,7 @@
         </div>
       </div>
 
-      <a href="${zapUrl}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #ffffff; padding: 13px 18px; border-radius: 10px; font-weight: 800; text-decoration: none; font-size: 0.95rem; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3); transition: transform 0.15s ease, filter 0.2s ease;">
+      <a id="payZapLink" href="${zapUrl}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: center; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #ffffff; padding: 13px 18px; border-radius: 10px; font-weight: 800; text-decoration: none; font-size: 0.95rem; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3); transition: transform 0.15s ease, filter 0.2s ease;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.769.814 2.791.814 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.767-5.768-5.767zm7.647 5.766c-.001 4.223-3.435 7.656-7.647 7.656-1.328 0-2.457-.34-3.489-.955l-4.542 1.19 1.21-4.425c-.687-1.077-1.07-2.316-1.07-3.466.001-4.223 3.435-7.656 7.647-7.656 4.223 0 7.658 3.433 7.658 7.656z"/></svg>
         <span>Enviar Comprovante no WhatsApp</span>
       </a>
@@ -323,6 +351,12 @@
         </button>
       </div>
 
+      ${!session?.email ? `
+        <button type="button" id="btnSwitchToTrial" style="margin-top: 12px; width: 100%; background: rgba(52,214,172,0.06); border: 1px dashed var(--green); color: var(--green); padding: 12px; border-radius: 10px; font-weight: 750; font-size: 0.88rem; cursor: pointer; transition: all 0.2s;">
+          ✦ Prefiro começar testando 7 dias grátis ➔
+        </button>
+      ` : ''}
+
       <div style="margin-top: 14px; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; border-top: 1px solid #1a2d42; padding-top: 10px;">
         Ao assinar você concorda com nossos <a href="termos.html" target="_blank" style="color: var(--green); text-decoration: underline;">Termos de Uso</a> e <a href="privacidade.html" target="_blank" style="color: var(--green); text-decoration: underline;">Privacidade</a>.<br>
         <span style="opacity: 0.75;">Software utilitário independente. Uber, 99 e inDrive são marcas de seus respectivos proprietários.</span>
@@ -336,6 +370,80 @@
         </div>
       ` : ''}
     `;
+
+    const updatePaywallPlan = (planKey) => {
+      localStorage.setItem('capitalex_chosen_plan', planKey);
+      const cardM = document.getElementById('payCardMonthly');
+      const cardQ = document.getElementById('payCardQuarterly');
+      const cardS = document.getElementById('payCardSemiannual');
+      const zapLink = document.getElementById('payZapLink');
+      const pixValBadge = document.getElementById('pixPlanBadge');
+
+      if (!cardM || !cardQ || !cardS) return;
+
+      cardM.style.borderColor = '#1f3b55';
+      cardM.style.boxShadow = 'none';
+      cardM.style.transform = 'scale(1)';
+      cardQ.style.borderColor = '#1f3b55';
+      cardQ.style.boxShadow = 'none';
+      cardQ.style.transform = 'scale(1)';
+      cardS.style.borderColor = '#1f3b55';
+      cardS.style.boxShadow = 'none';
+      cardS.style.transform = 'scale(1)';
+
+      let planName = 'Trimestral';
+      let planPrice = 'R$ 69,90';
+
+      if (planKey === 'mensal') {
+        planName = 'Mensal';
+        planPrice = 'R$ 25,95';
+        cardM.style.borderColor = '#34d6ac';
+        cardM.style.boxShadow = '0 0 16px rgba(52, 214, 172, 0.3)';
+        cardM.style.transform = 'scale(1.04)';
+      } else if (planKey === 'semestral') {
+        planName = 'Semestral Safra';
+        planPrice = 'R$ 119,90';
+        cardS.style.borderColor = '#a78bfa';
+        cardS.style.boxShadow = '0 0 16px rgba(167, 139, 250, 0.3)';
+        cardS.style.transform = 'scale(1.04)';
+      } else {
+        planName = 'Trimestral';
+        planPrice = 'R$ 69,90';
+        cardQ.style.borderColor = '#34d6ac';
+        cardQ.style.boxShadow = '0 0 16px rgba(52, 214, 172, 0.3)';
+        cardQ.style.transform = 'scale(1.04)';
+      }
+
+      if (pixValBadge) {
+        pixValBadge.innerHTML = `Valor Pix: <strong style="color:#ffffff;">${planPrice}</strong> (${planName})`;
+      }
+
+      if (zapLink) {
+        const curEmail = (document.getElementById('payEmailInp')?.value || session?.email || localStorage.getItem('capitalex_user_email') || '').trim();
+        const emailMsg = curEmail ? `\nMeu e-mail para liberação é: ${curEmail}` : '';
+        const text = encodeURIComponent(`Olá Flavio! Fiz o Pix do Plano ${planName} (${planPrice}) para liberar minha assinatura no Capitalex Driver.${emailMsg}\nSeguem os dados do pagamento!`);
+        zapLink.href = `https://wa.me/${WHATSAPP_NUM}?text=${text}`;
+      }
+    };
+
+    const emailInp = document.getElementById('payEmailInp');
+    if (emailInp) {
+      emailInp.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        localStorage.setItem('capitalex_user_email', val);
+        updatePaywallPlan(localStorage.getItem('capitalex_chosen_plan') || 'trimestral');
+      });
+    }
+
+    document.getElementById('payCardMonthly')?.addEventListener('click', () => updatePaywallPlan('mensal'));
+    document.getElementById('payCardQuarterly')?.addEventListener('click', () => updatePaywallPlan('trimestral'));
+    document.getElementById('payCardSemiannual')?.addEventListener('click', () => updatePaywallPlan('semestral'));
+
+    updatePaywallPlan(localStorage.getItem('capitalex_chosen_plan') || 'trimestral');
+
+    document.getElementById('btnSwitchToTrial')?.addEventListener('click', () => {
+      showLogin('register');
+    });
 
     document.getElementById('btnBackToApp')?.addEventListener('click', () => {
       unlock();
@@ -449,6 +557,13 @@
         }
         if (window.DriverApp?.load) {
           await window.DriverApp.load();
+        }
+        const chosenPlan = localStorage.getItem('capitalex_chosen_plan');
+        if (chosenPlan) {
+          localStorage.removeItem('capitalex_chosen_plan');
+          showPaywall(chosenPlan);
+          message('Conta criada com sucesso! Faça o Pix para liberação definitiva.');
+          return;
         }
         unlock();
         message('');
@@ -564,7 +679,13 @@
 
   window.Account = {
     api,
-    savePix: async (pix_key, pix_key_type) => api('save-pix', 'POST', { pix_key, pix_key_type })
+    savePix: async (pix_key, pix_key_type) => api('save-pix', 'POST', { pix_key, pix_key_type }),
+    showPaywall,
+    showLogin,
+    setupPlanSignup: (planKey) => {
+      localStorage.setItem('capitalex_chosen_plan', planKey);
+      showLogin('register');
+    }
   };
   window.addEventListener('DOMContentLoaded', boot);
 })();

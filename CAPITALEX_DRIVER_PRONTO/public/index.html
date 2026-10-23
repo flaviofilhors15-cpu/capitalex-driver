@@ -2,23 +2,23 @@
 
 <aside><a class="brand brand-capitalex" href="#dashboard" aria-label="Capitalex Driver — início"><span class="brand-image"><img src="assets/capitalex-logo.png" alt="Capitalex — Capital e Business" width="2048" height="742"></span><span class="brand-product">DRIVER <span>Seu trabalho. Seus resultados.</span></span></a><nav aria-label="Navegação principal"></nav><div class="access-nav"><p class="eyebrow">COMECE POR AQUI</p><p class="access-nav-current">Conta e assinatura</p><p class="small">Após a ativação, seus ganhos, despesas e metas ficam disponíveis neste menu.</p></div></aside>
 <div class="workspace"><section id="accountGate" class="account-gate" aria-label="Acesso à conta">
- <div id="landingStep" style="padding: 10px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh;">
+ <div id="landingStep" style="grid-column: 1 / -1; width: 100%; max-width: 520px; margin: 0 auto; padding: 20px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh;">
   <img src="assets/capitalex-logo.png" alt="Capitalex Driver" style="max-width: 240px; margin-bottom: 40px; display: block;">
   <h1 style="font-size: 28px; line-height: 1.25; margin-bottom: 16px; color: var(--text); text-align: center; font-weight: 800;">Pare de adivinhar o seu lucro.</h1>
   <p style="color: var(--muted); font-size: 16px; margin-bottom: 40px; text-align: center; line-height: 1.5;">Descubra exatamente quanto dinheiro de verdade vai para o seu bolso no final do dia.</p>
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 8px; margin-bottom: 32px; width: 100%; max-width: 440px;">
-   <div style="border: 1px solid var(--line); border-radius: 12px; padding: 14px 8px; background: var(--surface); text-align: center;">
+   <div class="landing-plan-card" onclick="selectLandingPlan('mensal')" style="cursor: pointer; border: 1px solid var(--line); border-radius: 12px; padding: 14px 8px; background: var(--surface); text-align: center; transition: all 0.2s ease;">
     <div style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">MENSAL</div>
     <div style="font-size: 20px; font-weight: 800; color: var(--text); margin: 4px 0;">R$ 25,95</div>
     <div style="font-size: 11px; color: var(--muted);">R$ 0,86/dia</div>
    </div>
-   <div style="border: 1px solid var(--primary); border-radius: 12px; padding: 14px 8px; background: rgba(52,214,172,0.06); text-align: center; position: relative; box-shadow: 0 4px 20px rgba(52,214,172,0.15);">
+   <div class="landing-plan-card" onclick="selectLandingPlan('trimestral')" style="cursor: pointer; border: 2px solid var(--primary); border-radius: 12px; padding: 14px 8px; background: rgba(52,214,172,0.06); text-align: center; position: relative; box-shadow: 0 4px 20px rgba(52,214,172,0.15); transition: all 0.2s ease;">
     <span style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--primary); color:#081320; font-size:9px; font-weight:800; padding:3px 8px; border-radius:12px; white-space: nowrap;">RECOMENDADO</span>
     <div style="font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px;">TRIMESTRAL</div>
     <div style="font-size: 20px; font-weight: 800; color: var(--text); margin: 4px 0;">R$ 69,90</div>
     <div style="font-size: 11px; color: var(--muted);">R$ 23,30/mês</div>
    </div>
-   <div style="border: 1px solid #a78bfa; border-radius: 12px; padding: 14px 8px; background: rgba(167,139,250,0.06); text-align: center; position: relative;">
+   <div class="landing-plan-card" onclick="selectLandingPlan('semestral')" style="cursor: pointer; border: 1px solid #a78bfa; border-radius: 12px; padding: 14px 8px; background: rgba(167,139,250,0.06); text-align: center; position: relative; transition: all 0.2s ease;">
     <span style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#a78bfa; color:#081320; font-size:9px; font-weight:800; padding:3px 8px; border-radius:12px; white-space: nowrap;">SAFRA</span>
     <div style="font-size: 11px; font-weight: 700; color: #a78bfa; letter-spacing: 0.5px;">SEMESTRAL</div>
     <div style="font-size: 20px; font-weight: 800; color: var(--text); margin: 4px 0;">R$ 119,90</div>
@@ -54,15 +54,26 @@
     const g = document.getElementById('gateDescription');
     if (g) g.textContent = 'Parabéns! Você foi indicado por um colega e ganhou 10 dias de teste grátis!';
   }
+  window.selectLandingPlan = function(planKey) {
+    localStorage.setItem('capitalex_chosen_plan', planKey);
+    document.getElementById('landingStep').hidden = true;
+    document.getElementById('signupStep').hidden = false;
+    if (window.Account && window.Account.setupPlanSignup) {
+      window.Account.setupPlanSignup(planKey);
+    }
+  };
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW falhou:', err));
     });
   }
   document.getElementById('btnStartFunnel').addEventListener('click', () => {
-
+    localStorage.removeItem('capitalex_chosen_plan');
     document.getElementById('landingStep').hidden = true;
     document.getElementById('signupStep').hidden = false;
+    if (window.Account && window.Account.showLogin) {
+      window.Account.showLogin('register');
+    }
   });
   document.getElementById('btnExistingLogin').addEventListener('click', () => {
     document.getElementById('landingStep').hidden = true;
